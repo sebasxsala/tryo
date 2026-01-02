@@ -9,15 +9,9 @@ export {
   defaultFallback,
   createNormalizer,
 } from "./error/normalize";
-export {
-  abortRule,
-  timeoutRule,
-  errorRule,
-  messageRule,
-  stringRule,
-  statusRule,
-  aggregateRule,
-} from "./error/rules";
+export { rules } from "./error/core";
+
+export { errorRule } from "./error/builder";
 
 export { createRunner } from "./runner/runner";
 export type { CreateRunnerOptions } from "./runner/runner";

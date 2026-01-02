@@ -44,19 +44,26 @@ const composeMapError =
   (e: E) =>
     local ? local(base ? base(e) : e) : base ? base(e) : e;
 
-export function createRunner<
-  TRules extends readonly Rule<any>[] = [],
-  E extends AppError = [TRules] extends [[]]
-    ? AppError
-    : InferErrorFromRules<TRules>
->(opts: { rules?: TRules } & Omit<CreateRunnerOptions<E>, "rules"> = {}) {
+export function createRunner<const TRules extends readonly Rule<any>[] = []>(
+  opts: {
+    rules?: TRules;
+    fallback?: (err: unknown) => InferErrorFromRules<TRules>;
+    toError?: (err: unknown) => InferErrorFromRules<TRules>;
+    ignoreAbort?: boolean;
+    mapError?: (
+      error: InferErrorFromRules<TRules>
+    ) => InferErrorFromRules<TRules>;
+  } = {}
+) {
+  type E = InferErrorFromRules<TRules>;
+
   const {
     rules = [],
     fallback = (e: unknown) => defaultFallback(e) as unknown as E,
     toError: customToError,
     ignoreAbort = true,
     mapError: defaultMapError,
-  } = opts;
+  } = opts as CreateRunnerOptions<E>;
 
   const toError =
     customToError ??

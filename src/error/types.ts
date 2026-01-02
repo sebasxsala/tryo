@@ -31,26 +31,5 @@ type RuleReturn<R> = R extends (err: unknown) => infer Out
   ? NonNull<Out>
   : never;
 export type InferErrorFromRules<TRules extends readonly Rule<any>[]> =
-  RuleReturn<TRules[number]>;
+  TRules extends readonly [] ? AppError : RuleReturn<TRules[number]>;
 export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
-
-import { createRunner } from "../runner/runner";
-import { abortRule, errorRule } from "./rules";
-
-class HttpError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
-
-class TestError extends Error {
-  arigato: string;
-
-  constructor(message: string) {
-    super(message);
-    this.arigato = " arigato";
-  }
-}
