@@ -44,17 +44,35 @@ const composeMapError =
   (e: E) =>
     local ? local(base ? base(e) : e) : base ? base(e) : e;
 
+export interface Runner<E extends AppError> {
+  run<T>(
+    fn: () => Promise<T>,
+    options?: RunOptions<T, E>
+  ): Promise<RunResult<T, E>>;
+  all<T>(
+    fns: Array<() => Promise<T>>,
+    options?: RunAllOptions<T, E>
+  ): Promise<RunAllItemResult<T, E>[]>;
+  allOrThrow<T>(
+    fns: (() => Promise<T>)[],
+    options?: RunOptions<T, E>
+  ): Promise<T[]>;
+}
+
+export function createRunner(
+  opts?: Omit<CreateRunnerOptions<AppError>, "rules">
+): Runner<AppError>;
+
+export function createRunner<const TRules extends readonly Rule<any>[]>(
+  opts: { rules: TRules } & Omit<
+    CreateRunnerOptions<InferErrorFromRules<TRules>>,
+    "rules"
+  >
+): Runner<InferErrorFromRules<TRules>>;
+
 export function createRunner<const TRules extends readonly Rule<any>[] = []>(
-  opts: {
-    rules?: TRules;
-    fallback?: (err: unknown) => InferErrorFromRules<TRules>;
-    toError?: (err: unknown) => InferErrorFromRules<TRules>;
-    ignoreAbort?: boolean;
-    mapError?: (
-      error: InferErrorFromRules<TRules>
-    ) => InferErrorFromRules<TRules>;
-  } = {}
-) {
+  opts: any = {}
+): any {
   type E = InferErrorFromRules<TRules>;
 
   const {
