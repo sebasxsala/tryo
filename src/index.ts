@@ -12,7 +12,7 @@ export {
 export {
   abortRule,
   timeoutRule,
-  matchInstance,
+  errorRule,
   messageRule,
   stringRule,
   statusRule,

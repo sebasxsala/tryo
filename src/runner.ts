@@ -92,5 +92,3 @@ export function createRunner<E extends AppError = AppError>(
     },
   };
 }
-
-const runner = createRunner();

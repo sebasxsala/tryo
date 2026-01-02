@@ -85,10 +85,30 @@ export const aggregateRule: Rule = (err) => {
   return null;
 };
 
-// Helper para crear matcher basado en "instanceof" (plugin-friendly)
-export function matchInstance<T extends Error, Meta = unknown>(
-  ErrorCtor: new (...args: any[]) => T,
-  map: (e: T) => AppError<Meta>
-): Rule<AppError<Meta>> {
-  return (err) => (err instanceof ErrorCtor ? map(err) : null);
+type ErrorRule<E = unknown, Out = unknown> = {
+  match: (err: unknown) => err is E;
+  map: (err: E) => Out;
+};
+
+class ErrorRuleBuilder<E> {
+  constructor(private readonly matcher: (err: unknown) => err is E) {}
+
+  map<Out>(mapper: (err: E) => Out): ErrorRule<E, Out> {
+    return {
+      match: this.matcher,
+      map: mapper,
+    };
+  }
 }
+
+export const errorRule = {
+  instance<E extends new (...args: any[]) => any>(ctor: E) {
+    return new ErrorRuleBuilder<InstanceType<E>>(
+      (err): err is InstanceType<E> => err instanceof ctor
+    );
+  },
+
+  when<E = unknown>(predicate: (err: unknown) => err is E) {
+    return new ErrorRuleBuilder<E>(predicate);
+  },
+};
