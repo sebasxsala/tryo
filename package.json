@@ -1,6 +1,6 @@
 {
   "name": "runtry",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Run async functions and return a typed Result instead of throwing.",
   "type": "module",
   "main": "./dist/index.js",
