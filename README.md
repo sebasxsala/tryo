@@ -68,7 +68,7 @@ declare function run<T, E extends AppError = AppError>(
 import {
   createNormalizer,
   abortMatcher,
-  instanceOfMatcher,
+  matchInstance,
   defaultFallback,
 } from "runtry";
 import type { AppError } from "runtry";
@@ -76,7 +76,7 @@ import { HttpError } from "./http-error"; // your app error class
 
 type MyMeta = { url?: string; body?: unknown };
 
-const httpMatcher = instanceOfMatcher(HttpError, (e) => ({
+const httpMatcher = matchInstance(HttpError, (e) => ({
   code: "HTTP",
   message: e.message,
   status: e.status,
@@ -111,7 +111,7 @@ If you don't want to pass `toError` every time, create a client:
 import {
   createClient,
   abortMatcher,
-  instanceOfMatcher,
+  matchInstance,
   defaultFallback,
 } from "runtry";
 import { HttpError } from "./http-error";
@@ -119,7 +119,7 @@ import { HttpError } from "./http-error";
 const client = createClient({
   matchers: [
     abortMatcher,
-    instanceOfMatcher(HttpError, (e) => ({
+    matchInstance(HttpError, (e) => ({
       code: "HTTP",
       message: e.message,
       status: e.status,

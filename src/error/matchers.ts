@@ -16,13 +16,17 @@ export const timeoutMatcher: Matcher = (err) => {
   }
   // algunas libs tiran Error con name = "TimeoutError"
   if (err instanceof Error && err.name === "TimeoutError") {
-    return { code: "TIMEOUT", message: err.message || "Request timed out", cause: err };
+    return {
+      code: "TIMEOUT",
+      message: err.message || "Request timed out",
+      cause: err,
+    };
   }
   return null;
 };
 
 // Helper para crear matcher basado en "instanceof" (plugin-friendly)
-export function instanceOfMatcher<T extends Error, Meta = unknown>(
+export function matchInstance<T extends Error, Meta = unknown>(
   ErrorCtor: new (...args: any[]) => T,
   map: (e: T) => AppError<Meta>
 ): Matcher<AppError<Meta>> {

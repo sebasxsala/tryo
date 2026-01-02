@@ -7,11 +7,7 @@ export {
   defaultFallback,
   createNormalizer,
 } from "./error/normalize";
-export {
-  abortMatcher,
-  timeoutMatcher,
-  instanceOfMatcher,
-} from "./error/matchers";
+export { abortMatcher, timeoutMatcher, matchInstance } from "./error/matchers";
 
 export { createClient } from "./client";
 export type { CreateClientOptions } from "./client";
