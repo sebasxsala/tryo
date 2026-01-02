@@ -31,5 +31,7 @@ type RuleReturn<R> = R extends (err: unknown) => infer Out
   ? NonNull<Out>
   : never;
 export type InferErrorFromRules<TRules extends readonly Rule<any>[]> =
-  TRules extends readonly [] ? AppError : RuleReturn<TRules[number]>;
+  TRules extends readonly []
+    ? AppError
+    : RuleReturn<TRules[number]> | AppError<"UNKNOWN">;
 export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;

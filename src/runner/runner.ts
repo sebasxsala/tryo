@@ -95,6 +95,8 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
       options: RunOptions<T, E> = {}
     ): Promise<RunResult<T, E>> {
       return baseRun(fn, {
+        toError,
+        ignoreAbort,
         ...options,
         mapError: composeMapError(defaultMapError, options.mapError),
       });
@@ -104,6 +106,8 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
       options: RunAllOptions<T, E> = {}
     ): Promise<RunAllItemResult<T, E>[]> {
       return baseRunAll(fns, {
+        toError,
+        ignoreAbort,
         ...options,
         mapError: composeMapError(defaultMapError, options.mapError),
       });
@@ -113,6 +117,8 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
       options: RunOptions<T, E> = {}
     ): Promise<T[]> {
       return baseRunAllOrThrow(fns, {
+        toError,
+        ignoreAbort,
         ...options,
         mapError: composeMapError(defaultMapError, options.mapError),
       });
