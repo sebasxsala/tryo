@@ -1,5 +1,4 @@
-import type { Rule } from "./rules";
-import type { AppError } from "./types";
+import type { AppError, Rule } from "./types";
 
 export function createNormalizer<E extends AppError>(
   rules: Rule<E>[],

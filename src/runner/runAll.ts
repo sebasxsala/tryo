@@ -1,6 +1,6 @@
 import { run } from "./run";
-import type { AppError } from "./error/types";
-import type { RunOptions, RunResult } from "./types";
+import type { AppError } from "../error/types";
+import type { RunOptions, RunResult } from "../types";
 
 export type RunAllItemResult<T, E extends AppError = AppError> =
   | ({ status: "ok" } & RunResult<T, E>)

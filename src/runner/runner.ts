@@ -1,12 +1,11 @@
-import type { AppError } from "./error/types";
-import type { Rule } from "./error/normalize";
+import type { AppError, Rule } from "../error/types";
 import {
   createNormalizer,
   defaultFallback,
   toAppError,
-} from "./error/normalize";
+} from "../error/normalize";
 import { run as baseRun } from "./run";
-import type { RunOptions, RunResult } from "./types";
+import type { RunOptions, RunResult } from "../types";
 import { runAllOrThrow as baseRunAllOrThrow } from "./runAllOrThrow";
 import {
   runAll as baseRunAll,

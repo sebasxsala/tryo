@@ -1,7 +1,4 @@
-import { createRunner } from "../runner";
-import type { AppError } from "./types";
-
-export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
+import type { AppError, Rule } from "./types";
 
 // Matcher genérico para AbortError (por si no quieres usar toAppError)
 export const abortRule: Rule = (err) => {

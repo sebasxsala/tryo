@@ -1,7 +1,7 @@
-import type { AppError } from "./error/types";
-import { toAppError as defaultToAppError } from "./error/normalize";
-import type { RunOptions, RunResult } from "./types";
-import { applyJitter, resolveRetryDelay, sleep } from "./utils";
+import type { AppError } from "../error/types";
+import { toAppError as defaultToAppError } from "../error/normalize";
+import type { RunOptions, RunResult } from "../types";
+import { applyJitter, resolveRetryDelay, sleep } from "../utils";
 
 /**
  * Executes an async operation and returns a Result instead of throwing.
