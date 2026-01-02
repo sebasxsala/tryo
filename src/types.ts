@@ -1,5 +1,12 @@
 import type { AppError } from "./error/types";
 
+export type RetryDelayFn<E> = (attempt: number, err: E) => number;
+
+export type Jitter =
+  | boolean
+  | number // ratio 0..1
+  | { ratio?: number; mode?: "full" | "equal"; rng?: () => number };
+
 export type RetryOptions<E extends AppError = AppError> = {
   /**
    * Number of retries to attempt.
@@ -9,31 +16,32 @@ export type RetryOptions<E extends AppError = AppError> = {
 
   /**
    * Delay in milliseconds between retries.
+   *
+   * - `number` for a fixed delay
+   * - `function` for custom delay based on attempt and error
+   *
    * @default 0
    */
-  retryDelay?: number;
-
-  /**
-   * Type of backoff to apply to the delay.
-   * - "fixed": Always waits `retryDelay`.
-   * - "linear": Waits `retryDelay * attempt`.
-   * - "exponential": Waits `retryDelay * (2 ** attempt)`.
-   * @default "fixed"
-   */
-  retryBackoff?: "fixed" | "linear" | "exponential";
+  retryDelay?: number | RetryDelayFn<E>;
 
   /**
    * Function to determine if a retry should be attempted.
    * Returns true to retry, false to stop.
    * @default () => true
    */
-  shouldRetry?: (error: E) => boolean;
-  
+  shouldRetry?: (attempt: number, error: E) => boolean;
+
   /**
    * Adds random jitter to the delay to prevent thundering herd.
-   * @default false
+   *
+   * - `true` for default 0.5 ratio
+   * - `false` to disable jitter
+   * - `number` for custom ratio 0..1
+   * - `{ ratio, mode, rng }` for full control
+   *
+   * @default 0.5
    */
-  jitter?: boolean;
+  jitter?: Jitter;
 };
 
 export type RunOptions<T, E extends AppError = AppError> = RetryOptions<E> & {

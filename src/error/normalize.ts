@@ -1,14 +1,14 @@
 import type { AppError } from "./types";
 
-export type Matcher<E extends AppError = AppError> = (err: unknown) => E | null;
+export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
 
 export function createNormalizer<E extends AppError>(
-  matchers: Matcher<E>[],
+  rules: Rule<E>[],
   fallback: (err: unknown) => E
 ) {
   return (err: unknown): E => {
-    for (const m of matchers) {
-      const out = m(err);
+    for (const r of rules) {
+      const out = r(err);
       if (out) return out;
     }
     return fallback(err);
@@ -26,7 +26,7 @@ export function defaultFallback(err: unknown): AppError {
   return { code: "UNKNOWN", message: "Something went wrong", cause: err };
 }
 
-// Normalizador "default" que incluye matcher de abort (muy útil en UI)
+// Normalizador "default" que incluye rule de abort (muy útil en UI)
 export function toAppError(err: unknown): AppError {
   // AbortError (browser / fetch / AbortController)
   if (err instanceof DOMException && err.name === "AbortError") {

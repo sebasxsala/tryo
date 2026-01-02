@@ -92,7 +92,7 @@ const tasks = [
 ];
 
 // Run max 2 at a time
-const results = await runAll(tasks, { 
+const results = await runAll(tasks, {
   concurrency: 2,
   onSettled: (res, index) => console.log(`Task ${index} done`),
   retries: 2, // Inherits all run() options including retries!
@@ -146,20 +146,20 @@ const res = await run(getDocuments, {
 
 ---
 
-## `createClient()` (configure once, reuse everywhere)
+## `createRunner()` (configure once, reuse everywhere)
 
-If you don't want to pass `toError` every time, create a client:
+If you don't want to pass `toError` every time, create a runner:
 
 ```ts
 import {
-  createClient,
+  createRunner,
   abortMatcher,
   matchInstance,
   defaultFallback,
 } from "runtry";
 import { HttpError } from "./http-error";
 
-const client = createClient({
+const runner = createRunner({
   matchers: [
     abortMatcher,
     matchInstance(HttpError, (e) => ({
@@ -184,9 +184,9 @@ const result = await client.run(getDocuments, {
 ## React example (loading + toast, no try/catch)
 
 ```ts
-import { createClient, abortMatcher, defaultFallback } from "runtry";
+import { createRunner, abortMatcher, defaultFallback } from "runtry";
 
-const client = createClient({
+const runner = createRunner({
   matchers: [abortMatcher],
   fallback: defaultFallback,
 });

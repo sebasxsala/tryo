@@ -10,14 +10,14 @@ export {
   createNormalizer,
 } from "./error/normalize";
 export {
-  abortMatcher,
-  timeoutMatcher,
+  abortRule,
+  timeoutRule,
   matchInstance,
-  messageMatcher,
-  stringMatcher,
-  statusMatcher,
-  aggregateMatcher,
-} from "./error/matchers";
+  messageRule,
+  stringRule,
+  statusRule,
+  aggregateRule,
+} from "./error/rules";
 
-export { createClient } from "./client";
-export type { CreateClientOptions } from "./client";
+export { createRunner } from "./runner";
+export type { CreateRunnerOptions } from "./runner";
