@@ -12,3 +12,6 @@ export {
   timeoutMatcher,
   instanceOfMatcher,
 } from "./error/matchers";
+
+export { createClient } from "./client";
+export type { CreateClientOptions } from "./client";
