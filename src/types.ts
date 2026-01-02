@@ -32,13 +32,6 @@ export type RunOptions<T, E extends AppError = AppError> = {
   onSuccess?: (data: T) => void;
 
   /**
-   * Called after success or failure (similar to a `finally` block).
-   *
-   * Common use: stop loading spinners, cleanup state, etc.
-   */
-  finally?: () => void;
-
-  /**
    * Called after success or failure, similar to `finally`, but with no return value.
    *
    * Common use: stop loading spinners, cleanup state, etc.
@@ -60,4 +53,3 @@ export type RunOptions<T, E extends AppError = AppError> = {
 export type RunResult<T, E extends AppError = AppError> =
   | { ok: true; data: T; error: null }
   | { ok: false; data: null; error: E };
-

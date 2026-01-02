@@ -1,6 +1,6 @@
 {
   "name": "runtry",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Run async functions and return a typed Result instead of throwing.",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,7 +17,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
@@ -25,8 +25,8 @@
     "typescript": "^5.0.0"
   },
   "license": "MIT",
-  "homepage": "https://github.com/sebastiansala/trysome#readme",
-  "bugs": "https://github.com/sebastiansala/trysome/issues",
+  "homepage": "https://github.com/sebastiansala/runtry#readme",
+  "bugs": "https://github.com/sebastiansala/runtry/issues",
   "author": {
     "name": "sebasxsala",
     "url": "https://github.com/sebasxsala"
