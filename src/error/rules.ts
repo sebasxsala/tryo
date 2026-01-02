@@ -1,7 +1,7 @@
 import type { AppError, Rule } from "./types";
 
 // Matcher genérico para AbortError (por si no quieres usar toAppError)
-export const abortRule: Rule = (err) => {
+export const abortRule: Rule<AppError<"ABORTED">> = (err) => {
   if (err instanceof DOMException && err.name === "AbortError") {
     return { code: "ABORTED", message: "Request cancelled", cause: err };
   }
@@ -9,7 +9,7 @@ export const abortRule: Rule = (err) => {
 };
 
 // Matcher para "timeout" (si el user usa AbortSignal.timeout o libs que tiran ese name)
-export const timeoutRule: Rule = (err) => {
+export const timeoutRule: Rule<AppError<"TIMEOUT">> = (err) => {
   if (err instanceof DOMException && err.name === "TimeoutError") {
     return { code: "TIMEOUT", message: "Request timed out", cause: err };
   }
@@ -25,7 +25,7 @@ export const timeoutRule: Rule = (err) => {
 };
 
 // Matcher para objetos con propiedad "message" (ej: { message: "Error X" })
-export const messageRule: Rule = (err) => {
+export const messageRule: Rule<AppError<"UNKNOWN">> = (err) => {
   if (
     typeof err === "object" &&
     err !== null &&
@@ -42,7 +42,7 @@ export const messageRule: Rule = (err) => {
 };
 
 // Matcher para errores lanzados como string literal (ej: throw "Error X")
-export const stringRule: Rule = (err) => {
+export const stringRule: Rule<AppError<"UNKNOWN">> = (err) => {
   if (typeof err === "string") {
     return {
       code: "UNKNOWN",
@@ -54,7 +54,7 @@ export const stringRule: Rule = (err) => {
 };
 
 // Matcher para errores con status/statusCode (común en clientes HTTP y APIs)
-export const statusRule: Rule = (err) => {
+export const statusRule: Rule<AppError<"HTTP">> = (err) => {
   if (typeof err === "object" && err !== null) {
     // Comprobamos status o statusCode
     const status = (err as any).status ?? (err as any).statusCode;
@@ -72,7 +72,9 @@ export const statusRule: Rule = (err) => {
 };
 
 // Matcher para AggregateError (Promise.any, etc)
-export const aggregateRule: Rule = (err) => {
+export const aggregateRule: Rule<AppError<"UNKNOWN", { errors: any[] }>> = (
+  err
+) => {
   if (typeof AggregateError !== "undefined" && err instanceof AggregateError) {
     return {
       code: "UNKNOWN",
@@ -87,7 +89,7 @@ export const aggregateRule: Rule = (err) => {
 class ErrorRuleBuilder<E> {
   constructor(private readonly matcher: (err: unknown) => err is E) {}
 
-  toError<Out extends AppError>(mapper: (err: E) => Out): Rule<Out> {
+  toError<const Out extends AppError>(mapper: (err: E) => Out): Rule<Out> {
     return (err: unknown) => {
       if (!this.matcher(err)) return null;
       return mapper(err);

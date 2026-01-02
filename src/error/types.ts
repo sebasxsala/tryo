@@ -6,8 +6,6 @@ export type AppErrorCode =
   | "HTTP"
   | "UNKNOWN";
 
-export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
-
 /**
  * A normalized error shape returned by `run()`.
  *
@@ -17,10 +15,42 @@ export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
  * - `meta`: Optional payload with extra context (response body, validation fields, etc.).
  * - `cause`: The original thrown value for debugging.
  */
-export type AppError<Meta = unknown> = {
-  code: AppErrorCode | (string & {}); // permite códigos custom sin perder autocomplete
+export type AppError<
+  Code extends string = AppErrorCode | (string & {}),
+  Meta = unknown
+> = {
+  code: Code; // permite códigos custom sin perder autocomplete
   message: string;
   status?: number; // útil para HTTP pero opcional
   meta?: Meta; // libre (body, fields, etc.)
   cause?: unknown; // error original
 };
+
+type NonNull<T> = T extends null ? never : T;
+type RuleReturn<R> = R extends (err: unknown) => infer Out
+  ? NonNull<Out>
+  : never;
+export type InferErrorFromRules<TRules extends readonly Rule<any>[]> =
+  RuleReturn<TRules[number]>;
+export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
+
+import { createRunner } from "../runner/runner";
+import { abortRule, errorRule } from "./rules";
+
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+class TestError extends Error {
+  arigato: string;
+
+  constructor(message: string) {
+    super(message);
+    this.arigato = " arigato";
+  }
+}

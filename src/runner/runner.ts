@@ -1,4 +1,4 @@
-import type { AppError, Rule } from "../error/types";
+import type { AppError, Rule, InferErrorFromRules } from "../error/types";
 import {
   createNormalizer,
   defaultFallback,
@@ -44,9 +44,12 @@ const composeMapError =
   (e: E) =>
     local ? local(base ? base(e) : e) : base ? base(e) : e;
 
-export function createRunner<E extends AppError = AppError>(
-  opts: CreateRunnerOptions<E> = {}
-) {
+export function createRunner<
+  TRules extends readonly Rule<any>[] = [],
+  E extends AppError = [TRules] extends [[]]
+    ? AppError
+    : InferErrorFromRules<TRules>
+>(opts: { rules?: TRules } & Omit<CreateRunnerOptions<E>, "rules"> = {}) {
   const {
     rules = [],
     fallback = (e: unknown) => defaultFallback(e) as unknown as E,
@@ -58,7 +61,7 @@ export function createRunner<E extends AppError = AppError>(
   const toError =
     customToError ??
     (rules.length > 0
-      ? createNormalizer<E>(rules, fallback)
+      ? createNormalizer<E>(rules as unknown as Rule<E>[], fallback)
       : (toAppError as unknown as (e: unknown) => E));
 
   return {
