@@ -1,6 +1,6 @@
 {
   "name": "trysome",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Run async functions and return a typed Result instead of throwing.",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,5 +24,11 @@
     "@types/bun": "latest",
     "typescript": "^5.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "homepage": "https://github.com/sebastiansala/trysome#readme",
+  "bugs": "https://github.com/sebastiansala/trysome/issues",
+  "author": {
+    "name": "sebasxsala",
+    "url": "https://github.com/sebasxsala"
+  }
 }
