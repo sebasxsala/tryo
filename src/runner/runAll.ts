@@ -3,14 +3,9 @@ import type { AppError } from "../error/types";
 import type { RunOptions, RunResult } from "../types";
 
 export type RunAllItemResult<T, E extends AppError = AppError> =
-  | ({ status: "ok" } & RunResult<T, E>)
-  | ({ status: "error" } & RunResult<T, E>)
-  | {
-      status: "skipped";
-      ok: false;
-      data: null;
-      error: null;
-    };
+  | { status: "ok"; ok: true; data: T; error: null }
+  | { status: "error"; ok: false; data: null; error: E }
+  | { status: "skipped"; ok: false; data: null; error: null };
 
 export type RunAllOptions<T, E extends AppError = AppError> = RunOptions<
   T,
@@ -49,7 +44,9 @@ export async function runAll<T, E extends AppError = AppError>(
   let aborted = false;
 
   const setResult = (i: number, r: RunResult<T, E>) => {
-    results[i] = r.ok ? { ...r, status: "ok" } : { ...r, status: "error" };
+    results[i] = r.ok
+      ? { status: "ok", ok: true, data: r.data, error: null }
+      : { status: "error", ok: false, data: null, error: r.error };
   };
 
   const markSkipped = () => {
