@@ -69,10 +69,9 @@ You can configure automatic retries for failed operations:
 ```ts
 await run(fetchData, {
   retries: 3,
-  retryDelay: 1000,
-  retryBackoff: "exponential", // "fixed" | "linear" | "exponential"
-  jitter: true, // adds randomization to delay
-  shouldRetry: (err) => err.status === 503, // optional filter
+  retryDelay: (attempt, err) => attempt * 1000,
+  jitter: { ratio: 0.5, mode: "full" }, // adds randomization to delay
+  shouldRetry: (attempt, err) => err.status === 503, // optional filter
 });
 ```
 
