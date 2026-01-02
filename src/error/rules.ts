@@ -1,5 +1,7 @@
+import { createRunner } from "../runner";
 import type { AppError } from "./types";
-import type { Rule } from "./normalize";
+
+export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
 
 // Matcher genérico para AbortError (por si no quieres usar toAppError)
 export const abortRule: Rule = (err) => {
@@ -85,18 +87,13 @@ export const aggregateRule: Rule = (err) => {
   return null;
 };
 
-type ErrorRule<E = unknown, Out = unknown> = {
-  match: (err: unknown) => err is E;
-  map: (err: E) => Out;
-};
-
 class ErrorRuleBuilder<E> {
   constructor(private readonly matcher: (err: unknown) => err is E) {}
 
-  map<Out>(mapper: (err: E) => Out): ErrorRule<E, Out> {
-    return {
-      match: this.matcher,
-      map: mapper,
+  toError<Out extends AppError>(mapper: (err: E) => Out): Rule<Out> {
+    return (err: unknown) => {
+      if (!this.matcher(err)) return null;
+      return mapper(err);
     };
   }
 }

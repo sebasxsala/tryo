@@ -1,6 +1,5 @@
+import type { Rule } from "./rules";
 import type { AppError } from "./types";
-
-export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
 
 export function createNormalizer<E extends AppError>(
   rules: Rule<E>[],
