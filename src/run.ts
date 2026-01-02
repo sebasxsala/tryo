@@ -22,24 +22,56 @@ export async function run<T, E extends AppError = AppError>(
     onSuccess,
     onFinally,
     ignoreAbort = true,
+    retries = 0,
+    retryDelay = 0,
+    retryBackoff = "fixed",
+    shouldRetry = () => true,
+    jitter = false,
   } = options;
 
-  try {
-    const data = await fn();
-    onSuccess?.(data);
-    return { ok: true, data, error: null };
-  } catch (e) {
-    let err = toError(e);
-    if (mapError) err = mapError(err);
+  let attempt = 0;
 
-    if (ignoreAbort && err.code === "ABORTED") {
-      // decisión de diseño: devolvemos ok:false pero sin llamar onError (para no toastear)
+  while (true) {
+    try {
+      const data = await fn();
+      onSuccess?.(data);
+      onFinally?.(); // Always call finally on success (last attempt)
+      return { ok: true, data, error: null };
+    } catch (e) {
+      let err = toError(e);
+      if (mapError) err = mapError(err);
+
+      // Abort is critical: stop immediately, no retries
+      const isAborted = err.code === "ABORTED";
+      
+      if (isAborted) {
+         if (ignoreAbort) {
+            onFinally?.();
+            return { ok: false, data: null, error: err };
+         }
+         // If not ignoring abort, we fall through to onError and return
+      } else if (attempt < retries && shouldRetry(err)) {
+        attempt++;
+        
+        let delay = retryDelay;
+        if (retryBackoff === "linear") delay *= attempt;
+        if (retryBackoff === "exponential") delay *= Math.pow(2, attempt - 1); // 1st retry: 2^0=1x, 2nd: 2^1=2x
+        
+        if (jitter) {
+           delay = delay * (0.5 + Math.random()); // +/- 50% randomization or similar
+        }
+
+        // Wait before retrying
+        if (delay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+        continue; // Retry loop
+      }
+
+      // Final failure or aborted
+      onError?.(err);
+      onFinally?.();
       return { ok: false, data: null, error: err };
     }
-
-    onError?.(err);
-    return { ok: false, data: null, error: err };
-  } finally {
-    onFinally?.();
   }
 }

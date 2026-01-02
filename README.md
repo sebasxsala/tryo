@@ -5,6 +5,8 @@ Run async functions and return a typed `Result` **instead of throwing**.
 - ✅ No repetitive `try/catch` in UI code
 - ✅ Typed success/error handling
 - ✅ Pluggable error normalization (matchers / adapters)
+- ✅ **Automatic Retries** with backoff & jitter
+- ✅ **Concurrency control** with `runAll`
 
 ---
 
@@ -52,9 +54,50 @@ declare function run<T, E extends AppError = AppError>(
 ): Promise<RunResult<T, E>>;
 ```
 
-- Returns `{ ok: true, data, error: null }` on success
-- Returns `{ ok: false, data: null, error }` on failure
-- Never throws (unless your callbacks throw)
+#### Options
+
+- `toError`: Custom error normalizer.
+- `onError`: Callback for final failure.
+- `onSuccess`: Callback for success.
+- `onFinally`: Callback after completion (success or fail).
+- `ignoreAbort`: Don't trigger onError for Abort/Cancellation (default: true).
+
+#### Retries
+
+You can configure automatic retries for failed operations:
+
+```ts
+await run(fetchData, {
+  retries: 3,
+  retryDelay: 1000,
+  retryBackoff: "exponential", // "fixed" | "linear" | "exponential"
+  jitter: true, // adds randomization to delay
+  shouldRetry: (err) => err.status === 503, // optional filter
+});
+```
+
+---
+
+### `runAll(tasks, options?)`
+
+Executes multiple tasks with **concurrency control**.
+
+```ts
+import { runAll } from "runtry";
+
+const tasks = [
+  () => fetch("/api/1"),
+  () => fetch("/api/2"),
+  () => fetch("/api/3"),
+];
+
+// Run max 2 at a time
+const results = await runAll(tasks, { 
+  concurrency: 2,
+  onSettled: (res, index) => console.log(`Task ${index} done`),
+  retries: 2, // Inherits all run() options including retries!
+});
+```
 
 ---
 
