@@ -13,18 +13,18 @@ export function createNormalizer<E extends AppError>(
   };
 }
 
-// Fallback general (sin depender de fetch / http)
+// General fallback (without depending on fetch / http)
 export function defaultFallback(err: unknown): AppError {
   if (err instanceof Error) {
-    // En browsers, errores de red a veces caen como TypeError (fetch),
-    // pero esto no es 100% universal; lo tratamos como best-effort.
+    // In browsers, network errors sometimes fall as TypeError (fetch),
+    // but this is not 100% universal; we treat it as best-effort.
     const code = err.name === "TypeError" ? "NETWORK" : "UNKNOWN";
     return { code, message: err.message || "Something went wrong", cause: err };
   }
   return { code: "UNKNOWN", message: "Something went wrong", cause: err };
 }
 
-// Normalizador "default" que incluye rule de abort (muy útil en UI)
+// "default" normalizer that includes abort rule (very useful in UI)
 export function toAppError(err: unknown): AppError {
   // AbortError (browser / fetch / AbortController)
   if (err instanceof DOMException && err.name === "AbortError") {

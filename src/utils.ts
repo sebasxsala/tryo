@@ -40,7 +40,7 @@ export function applyJitter(delay: number, jitter: Jitter | undefined): number {
   const rng =
     typeof jitter === "object" && jitter.rng ? jitter.rng : Math.random;
 
-  // defaults razonables
+  // reasonable defaults
   const ratio =
     typeof jitter === "number"
       ? jitter
@@ -54,7 +54,7 @@ export function applyJitter(delay: number, jitter: Jitter | undefined): number {
 
   const mode = typeof jitter === "object" && jitter.mode ? jitter.mode : "full";
 
-  // "full": 0..delay*r extra (recomendado para evitar thundering herd)
+  // "full": 0..delay*r extra (recommended to avoid thundering herd)
   // "equal": delay*(1-r) + random(0..delay*r)
   if (mode === "equal") {
     return delay * (1 - r) + rng() * delay * r;

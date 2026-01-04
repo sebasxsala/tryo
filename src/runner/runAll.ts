@@ -4,28 +4,28 @@ import type { RunOptions, RunResult } from "../types";
 import { validateOptions } from "../types";
 
 /**
- * Resultado discriminado por ítem en `runAll`:
- * - "ok": tarea exitosa con `data`
- * - "error": tarea fallida con `error`
- * - "skipped": tarea no ejecutada por cancelación/fail-fast/concurrencia
+ * Discriminated result per item in `runAll`:
+ * - "ok": successful task with `data`
+ * - "error": failed task with `error`
+ * - "skipped": task not executed due to cancellation/fail-fast/concurrency
  */
 export type RunAllItemResult<T, E extends AppError = AppError> =
   | { status: "ok"; ok: true; data: T; error: null }
   | { status: "error"; ok: false; data: null; error: E }
   | { status: "skipped"; ok: false; data: null; error: null };
 
-/** Helper para discriminar resultados exitosos. */
+/** Helper to discriminate successful results. */
 export type SuccessResult<T> = Extract<
   RunAllItemResult<T, any>,
   { status: "ok" }
 >;
-/** Helper para discriminar resultados con error. */
+/** Helper to discriminate error results. */
 export type ErrorResult<E> = Extract<
   RunAllItemResult<any, E extends AppError ? E : AppError>,
   { status: "error" }
 >;
 
-/** Type guard que detecta `status: "ok"` con tipado de `data`. */
+/** Type guard that detects `status: "ok"` with `data` typing. */
 export const isSuccess = <T, E extends AppError = AppError>(
   r: RunAllItemResult<T, E>
 ): r is SuccessResult<T> => r.status === "ok";

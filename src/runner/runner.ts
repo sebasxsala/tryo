@@ -39,8 +39,8 @@ export type CreateRunnerOptions<E extends AppError = AppError> = {
   /** Optional default mapper for all runs */
   mapError?: (error: E) => E;
   /**
-   * Circuit breaker por defecto para todas las ejecuciones de la instancia.
-   * Puede ser sobreescrito por `options.circuitBreaker` en cada `run`.
+   * Default circuit breaker for all executions of the instance.
+   * Can be overridden by `options.circuitBreaker` in each `run`.
    */
   circuitBreaker?: CircuitBreakerOptions;
 };

@@ -4,9 +4,9 @@ import type { RunOptions, RunResult } from "../types";
 import { validateOptions } from "../types";
 
 /**
- * Opciones para `runAllOrThrow`:
- * - Hereda todas las opciones de `RunOptions`
- * - `concurrency`: límite de tareas simultáneas; si falla una, se lanza
+ * Options for `runAllOrThrow`:
+ * - Inherits all options from `RunOptions`
+ * - `concurrency`: limit of simultaneous tasks; if one fails, it throws
  */
 export type RunAllOrThrowOptions<T, E extends AppError = AppError> = RunOptions<
   T,

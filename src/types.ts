@@ -8,11 +8,11 @@ export type Jitter =
   | { ratio?: number; mode?: "full" | "equal"; rng?: () => number };
 
 /**
- * Estrategia de backoff para calcular el delay entre reintentos.
- * - "linear": usa el delay base tal cual en cada intento.
- * - "exponential": multiplica por 2^(attempt-1) el delay.
- * - "fibonacci": multiplica por F(attempt) (serie fibonacci clásica).
- * - function: función personalizada basada en el número de intento.
+ * Backoff strategy to calculate the delay between retries.
+ * - "linear": uses the base delay as is in each attempt.
+ * - "exponential": multiplies the delay by 2^(attempt-1).
+ * - "fibonacci": multiplies by F(attempt) (classic Fibonacci sequence).
+ * - function: custom function based on the attempt number.
  */
 export type BackoffStrategy =
   | "linear"
@@ -21,26 +21,26 @@ export type BackoffStrategy =
   | ((attempt: number) => number);
 
 /**
- * Opciones de reintentos para `run`, `runAll` y `runAllOrThrow`.
+ * Retry options for `run`, `runAll` and `runAllOrThrow`.
  */
 export type RetryOptions<E extends AppError = AppError> = {
   /**
-   * Cantidad de reintentos a realizar (no incluye el intento inicial).
+   * Number of retries to perform (does not include the initial attempt).
    * @default 0
    */
   retries?: number;
   /**
-   * Delay entre intentos:
-   * - number: delay fijo (ms)
-   * - () => number: delay lazy (evaluado por intento)
-   * - (attempt, err) => number: delay basado en intento y último error
-   * @default 0 o un baseDelay por defecto si hay retries
+   * Delay between attempts:
+   * - number: fixed delay (ms)
+   * - () => number: lazy delay (evaluated per attempt)
+   * - (attempt, err) => number: delay based on attempt and last error
+   * @default 0 or a default baseDelay if retries are present
    */
   retryDelay?: number | (() => number) | RetryDelayFn<E>;
   /**
-   * Decide si se debe reintentar ante un error dado.
-   * Puede ser síncrono o asíncrono.
-   * Recibe el intento siguiente y un contexto con métricas acumuladas.
+   * Decides whether to retry given a specific error.
+   * Can be synchronous or asynchronous.
+   * Receives the next attempt number and a context with accumulated metrics.
    * @default () => true
    */
   shouldRetry?: (
@@ -49,108 +49,108 @@ export type RetryOptions<E extends AppError = AppError> = {
     context: RetryContext
   ) => boolean | Promise<boolean>;
   /**
-   * Jitter aleatorio para evitar thundering herd:
-   * - true: ratio 0.5 por defecto
-   * - false: sin jitter
+   * Random jitter to avoid thundering herd:
+   * - true: default ratio 0.5
+   * - false: no jitter
    * - number: ratio 0..1
-   * - object: control completo (ratio, mode, rng)
+   * - object: full control (ratio, mode, rng)
    * @default 0.5
    */
   jitter?: Jitter;
   /**
-   * Estrategia de backoff a aplicar sobre el delay calculado.
+   * Backoff strategy to apply on the calculated delay.
    * @default "linear"
    */
   backoffStrategy?: BackoffStrategy;
   /**
-   * Límite superior del delay tras backoff y antes de jitter.
-   * @default undefined (sin límite)
+   * Upper limit of the delay after backoff and before jitter.
+   * @default undefined (no limit)
    */
   maxDelay?: number;
 };
 
 /**
- * Contexto para `shouldRetry` con acumulados del intento actual.
+ * Context for `shouldRetry` with accumulated metrics of the current attempt.
  */
 export type RetryContext = {
-  /** Total de intentos (incluyendo el próximo reintento). */
+  /** Total attempts (including the next retry). */
   totalAttempts: number;
-  /** Tiempo transcurrido en ms desde el inicio del `run`. */
+  /** Elapsed time in ms since the start of `run`. */
   elapsedTime: number;
 };
 
 /**
- * Opciones principales para `run` y extendidas a `runAll`/`runAllOrThrow`.
+ * Main options for `run` and extended to `runAll`/`runAllOrThrow`.
  */
 export type RunOptions<T, E extends AppError = AppError> = RetryOptions<E> & {
   /**
-   * Normaliza un valor de error desconocido a tu tipo `E`.
-   * Si no se provee, se usa un normalizador por defecto.
+   * Normalizes an unknown error value to your type `E`.
+   * If not provided, a default normalizer is used.
    */
   toError?: (err: unknown) => E;
   /**
-   * Transformación opcional aplicada luego de `toError`.
-   * Útil para ajustar mensajes, códigos o agregar metadata.
+   * Optional transformation applied after `toError`.
+   * Useful for adjusting messages, codes, or adding metadata.
    */
   mapError?: (error: E) => E;
   /**
-   * Callback al fallar (no se llama si `ignoreAbort` y el error es ABORTED).
+   * Callback on failure (not called if `ignoreAbort` and error is ABORTED).
    */
   onError?: (error: E) => void;
   /**
-   * Callback al tener éxito.
+   * Callback on success.
    */
   onSuccess?: (data: T) => void;
   /**
-   * Callback que se ejecuta siempre al finalizar (éxito o error).
+   * Callback that always executes at the end (success or error).
    */
   onFinally?: () => void;
   /**
-   * Si true, los abortos (ABORTED) no se consideran error fatal:
-   * no se llama `onError` y se devuelve `{ ok: false, error }`.
+   * If true, aborts (ABORTED) are not considered fatal errors:
+   * `onError` is not called and `{ ok: false, error }` is returned.
    * @default true
    */
   ignoreAbort?: boolean;
   /**
-   * Señal para cancelación nativa del trabajo.
-   * Si está abortada, se corta con `AbortError`.
+   * Signal for native work cancellation.
+   * If aborted, it cuts with `AbortError`.
    */
   signal?: AbortSignal;
   /**
-   * Timeout máximo en ms para el trabajo; expira con `TimeoutError`.
+   * Maximum timeout in ms for the work; expires with `TimeoutError`.
    */
   timeout?: number;
   /**
-   * Observabilidad de reintentos: recibe intento, error y delay siguiente.
+   * Retry observability: receives attempt, error, and next delay.
    */
   onRetry?: (attempt: number, error: E, nextDelay: number) => void;
   /**
-   * Logger estructurado opcional para debug y errores.
+   * Optional structured logger for debug and errors.
    */
   logger?: {
     debug?: (msg: string, meta?: any) => void;
     error?: (msg: string, error: E) => void;
   };
   /**
-   * Limpieza de recursos que se ejecuta siempre al terminar.
+   * Resource cleanup that always runs at the end.
    */
   cleanup?: () => void | Promise<void>;
   /**
-   * Callback al abortar, útil para reaccionar a `AbortSignal`.
+   * Callback on abort, useful for reacting to `AbortSignal`.
    */
   onAbort?: (signal: AbortSignal) => void;
   /**
-   * Configuración de circuit breaker por llamada.
-   * Si no se define, puede usar el valor por defecto del `Runner`.
+   * Per-call circuit breaker configuration.
+   * If not defined, can use the default value from `Runner`.
    */
   circuitBreaker?: CircuitBreakerOptions;
 };
 
 /**
- * Opciones de configuración del circuit breaker:
- * - failureThreshold: número de fallos consecutivos para abrir el circuito
- * - resetTimeout: tiempo en ms que permanece abierto antes de intentar half-open
- * - halfOpenRequests: cantidad permitida en estado half-open
+ * Circuit breaker configuration options:
+ * - failureThreshold: number of consecutive failures to open the circuit
+ * - resetTimeout: time in ms it remains open before attempting half-open
+ * - halfOpenRequests: allowed quantity in half-open state
  */
 export type CircuitBreakerOptions = {
   failureThreshold: number;
@@ -159,7 +159,7 @@ export type CircuitBreakerOptions = {
 };
 
 /**
- * Métricas de ejecución devueltas opcionalmente en `RunResult`.
+ * Execution metrics optionally returned in `RunResult`.
  */
 export type Metrics = {
   totalAttempts: number;
@@ -173,7 +173,7 @@ export type RunResult<T, E extends AppError = AppError> =
   | { ok: false; data: null; error: E; metrics?: Metrics };
 
 /**
- * Valida opciones comunes de ejecución/reintentos.
+ * Validates common execution/retry options.
  */
 export function validateOptions<T, E extends AppError = AppError>(
   options: RunOptions<T, E>

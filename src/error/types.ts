@@ -19,11 +19,11 @@ export type AppError<
   Code extends string = AppErrorCode | (string & {}),
   Meta = unknown
 > = {
-  code: Code; // permite códigos custom sin perder autocomplete
+  code: Code; // allows custom codes without losing autocomplete
   message: string;
-  status?: number; // útil para HTTP pero opcional
-  meta?: Meta; // libre (body, fields, etc.)
-  cause?: unknown; // error original
+  status?: number; // useful for HTTP but optional
+  meta?: Meta; // free (body, fields, etc.)
+  cause?: unknown; // original error
 };
 
 type NonNull<T> = T extends null ? never : T;
