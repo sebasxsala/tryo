@@ -1,0 +1,16 @@
+---
+title: Procesamiento en lote
+description: Ejecutar múltiples tareas con límites y agregación de resultados
+---
+
+## Ejemplo
+
+```typescript
+import { runAll, isSuccess } from "runtry";
+
+const tasks = Array.from({ length: 20 }, (_, i) => async () => i * 2);
+
+const results = await runAll<number>(tasks, { concurrency: 5, mode: "settle" });
+
+const values = results.filter(isSuccess).map((r) => r.data);
+```

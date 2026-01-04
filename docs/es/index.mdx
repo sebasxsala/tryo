@@ -1,0 +1,158 @@
+---
+title: Introducción
+description: 'Manejo de errores tipado para TypeScript con lógica de reintentos y control de concurrencia'
+---
+
+<img
+  className="block dark:hidden"
+  src="/logo/light.svg"
+  alt="Logo Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/logo/dark.svg"
+  alt="Logo Dark"
+/>
+
+## Bienvenido a Runtry
+
+Una librería moderna y tipada para el manejo de errores que hace que las operaciones asíncronas sean predecibles y resilientes.
+
+<CardGroup cols={2}>
+  <Card
+    title="Inicio Rápido"
+    icon="rocket"
+    href="/es/quickstart"
+  >
+    Empieza en menos de 5 minutos
+  </Card>
+  <Card
+    title="Referencia de API"
+    icon="code"
+    href="/es/api-reference/create-runner"
+  >
+    Explora la documentación completa de la API
+  </Card>
+  <Card
+    title="Ejemplos"
+    icon="lightbulb"
+    href="/es/examples/react"
+  >
+    Ejemplos y patrones del mundo real
+  </Card>
+  <Card
+    title="GitHub"
+    icon="github"
+    href="https://github.com/tu-usuario/tu-repo"
+  >
+    Ver código fuente y contribuir
+  </Card>
+</CardGroup>
+
+## Características
+
+<AccordionGroup>
+  <Accordion icon="check" title="Manejo de Errores Tipado">
+    No más bloques `try-catch`. Obtén uniones discriminadas con soporte completo de TypeScript.
+    ```typescript
+    const result = await runner.run(() => apiCall());
+    if (result.ok) {
+      // TypeScript sabe que data está disponible
+      console.log(result.data);
+    }
+    ```
+  </Accordion>
+
+  <Accordion icon="arrows-rotate" title="Lógica de Reintentos Inteligente">
+    Backoff exponencial integrado con jitter para prevenir el problema de thundering herd.
+    ```typescript
+    await runner.run(() => unstableApi(), {
+      retries: 3,
+      retryDelay: (attempt) => Math.pow(2, attempt) * 1000,
+      jitter: true
+    });
+    ```
+  </Accordion>
+
+  <Accordion icon="layer-group" title="Control de Concurrencia">
+    Ejecuta múltiples operaciones con paralelismo controlado.
+    ```typescript
+    await runner.all(tasks, { 
+      concurrency: 5,
+      mode: 'fail-fast' 
+    });
+    ```
+  </Accordion>
+
+  <Accordion icon="ban" title="Manejo de Abort">
+    Soporte de primera clase para `AbortController` y cancelación elegante.
+    ```typescript
+    await runner.run(() => fetch('/api', { signal }), {
+      ignoreAbort: true
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Instalación
+
+<CodeGroup>
+
+```bash npm
+npm install runtry
+```
+
+```bash pnpm
+pnpm add runtry
+```
+
+```bash yarn
+yarn add runtry
+```
+
+</CodeGroup>
+
+## Ejemplo Rápido
+
+```typescript
+import { createRunner } from 'runtry';
+
+const runner = createRunner();
+
+const result = await runner.run(
+  () => fetch('https://api.example.com/users'),
+  {
+    retries: 3,
+    retryDelay: 1000,
+    onError: (error) => console.error(error)
+  }
+);
+
+if (result.ok) {
+  const users = await result.data.json();
+  console.log(users);
+}
+```
+
+<Note>
+  **Consejo Pro:** Usa `createRunner()` una vez y reutilízalo en tu aplicación para un manejo de errores consistente.
+</Note>
+
+## Siguientes Pasos
+
+<CardGroup cols={2}>
+  <Card
+    title="Conceptos Principales"
+    icon="book"
+    href="/es/concepts/result-type"
+  >
+    Aprende sobre tipos Result y normalización de errores
+  </Card>
+  <Card
+    title="Integración con React"
+    icon="react"
+    href="/es/examples/react"
+  >
+    Mira cómo usarlo con hooks de React
+  </Card>
+</CardGroup>

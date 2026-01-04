@@ -1,0 +1,39 @@
+---
+title: Concurrency
+description: Concurrency control and batch execution modes
+---
+
+## Options
+
+- `concurrency`: limit of simultaneous tasks
+- `mode`: in `runAll`, `settle` or `fail-fast`
+
+## `runAll` with limit
+
+```typescript
+import { runAll } from "runtry";
+
+const tasks = Array.from({ length: 10 }, (_, i) => async () => i);
+
+const results = await runAll<number>(tasks, { concurrency: 3 });
+```
+
+## `fail-fast`
+
+Stops the start of new tasks on the first error.
+
+```typescript
+const results = await runAll<number>(tasks, { concurrency: 4, mode: "fail-fast" });
+```
+
+Unstarted tasks remain in `skipped` state.
+
+## `runAllOrThrow`
+
+Throws on the first error and respects `concurrency`.
+
+```typescript
+import { runAllOrThrow } from "runtry";
+
+const data = await runAllOrThrow<number>(tasks, { concurrency: 2 });
+```

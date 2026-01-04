@@ -1,0 +1,22 @@
+---
+title: Llamadas a API
+description: Llamadas HTTP con reintentos, timeout y manejo de errores
+---
+
+## Ejemplo
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api/items").then((x) => x.json()), {
+  retries: 3,
+  retryDelay: (attempt) => attempt * 200,
+  timeout: 2000,
+});
+
+if (r.ok) {
+  console.log(r.data);
+} else {
+  console.error(r.error.code);
+}
+```

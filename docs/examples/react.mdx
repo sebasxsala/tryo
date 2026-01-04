@@ -1,0 +1,34 @@
+---
+title: React
+description: Use runtry in effects with cancellation and retries
+---
+
+## Effect with AbortController
+
+```tsx
+import { useEffect, useState } from "react";
+import { run } from "runtry";
+
+export function Users() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    run(() => fetch("/api/users", { signal }).then((r) => r.json()), {
+      retries: 2,
+      retryDelay: 300,
+      onSuccess: (data) => setUsers(data),
+      onError: (e) => setError(e.message),
+      ignoreAbort: true,
+    });
+
+    return () => controller.abort();
+  }, []);
+
+  if (error) return <div>{error}</div>;
+  return <pre>{JSON.stringify(users, null, 2)}</pre>;
+}
+```

@@ -1,0 +1,26 @@
+---
+title: Migration
+description: From try/catch and Promise.all to safe and controlled results
+---
+
+## From try/catch to `run`
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api").then((x) => x.json()));
+if (r.ok) {
+  console.log(r.data);
+} else {
+  console.error(r.error.code);
+}
+```
+
+## From `Promise.all` to `runAll`
+
+```typescript
+import { runAll } from "runtry";
+
+const tasks = [() => fetch("/a"), () => fetch("/b")];
+const results = await runAll<Response>(tasks, { concurrency: 2, mode: "settle" });
+```

@@ -1,0 +1,83 @@
+---
+title: Result Type
+description: Resultado discriminado para operaciones con éxito o error, con métricas opcionales
+---
+
+## Visión general
+
+Las funciones de la librería devuelven un resultado que evita excepciones y facilita el control de flujo.
+
+- `run` devuelve un objeto con `ok: true` y `data`, o `ok: false` y `error`.
+- `runAll` devuelve un array con resultados por tarea: `ok`, `error` o `skipped`.
+- Las métricas opcionales ayudan a observar intentos, reintentos y duración.
+
+## `RunResult` en `run`
+
+```typescript
+import { run } from "runtry";
+
+type User = { id: string; name: string };
+
+const result = await run<User>(() => fetch("/api/user").then((r) => r.json()));
+
+if (result.ok) {
+  console.log(result.data);
+} else {
+  console.error(result.error.code);
+}
+```
+
+Estructura del resultado:
+
+- Éxito: `{ ok: true, data, error: null, metrics? }`
+- Error: `{ ok: false, data: null, error, metrics? }`
+
+Las métricas incluyen:
+
+- `totalAttempts`
+- `totalRetries`
+- `totalDuration`
+- `lastError?`
+
+## `RunAllItemResult` en `runAll`
+
+```typescript
+import { runAll } from "runtry";
+
+const tasks = [
+  () => fetch("/a").then((r) => r.text()),
+  () => fetch("/b").then((r) => r.text()),
+  () => fetch("/c").then((r) => r.text()),
+];
+
+const results = await runAll<string>(tasks);
+
+for (const r of results) {
+  if (r.status === "ok") console.log(r.data);
+  if (r.status === "error") console.error(r.error.code);
+}
+```
+
+Estados posibles por ítem:
+
+- `ok`: tarea exitosa con `data`
+- `error`: tarea fallida con `error`
+- `skipped`: tarea no ejecutada por cancelación o fail-fast
+
+## Helpers de tipo para `runAll`
+
+La librería exporta utilidades para discriminar resultados y mejorar el tipado:
+
+```typescript
+import { isSuccess, type SuccessResult, type ErrorResult } from "runtry";
+
+const results = await runAll<number>([
+  async () => 1,
+  async () => {
+    throw new Error("x");
+  },
+]);
+
+const successes: SuccessResult<number>[] = results.filter(isSuccess);
+const failures: ErrorResult<any>[] = results.filter((r) => r.status === "error");
+```

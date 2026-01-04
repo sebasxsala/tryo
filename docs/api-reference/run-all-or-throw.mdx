@@ -1,0 +1,29 @@
+---
+title: runAllOrThrow
+description: Executes multiple tasks and throws on the first failure
+---
+
+## Signature
+
+`runAllOrThrow<T>(tasks, options?): Promise<T[]>`
+
+## Options
+
+- Inherits all `run` options
+- `concurrency`: simultaneous limit
+
+## Example
+
+```typescript
+import { runAllOrThrow } from "runtry";
+
+const data = await runAllOrThrow<string>(
+  [
+    () => fetch("/a").then((r) => r.text()),
+    () => fetch("/b").then((r) => r.text()),
+  ],
+  { concurrency: 2 }
+);
+```
+
+If a task fails, the normalized error is thrown.

@@ -1,0 +1,93 @@
+---
+title: "Quickstart"
+description: "Start using Runtry in minutes"
+---
+
+## Installation
+
+Install Runtry using your favorite package manager:
+
+<CodeGroup>
+```bash npm
+npm install runtry
+```
+
+```bash pnpm
+pnpm add runtry
+```
+
+```bash yarn
+yarn add runtry
+```
+
+```bash bun
+bun add runtry
+```
+</CodeGroup>
+
+## Basic Usage
+
+Runtry provides a simple way to handle async operations safely.
+
+### Using `run` directly
+
+For simple use cases, you can use the `run` function directly:
+
+```typescript
+import { run } from "runtry";
+
+const result = await run(
+  () => fetch("https://api.example.com/data").then((res) => res.json()),
+  {
+    retries: 3,
+    timeout: 5000,
+  }
+);
+
+if (result.ok) {
+  console.log("Success:", result.data);
+} else {
+  console.error("Failed:", result.error);
+}
+```
+
+### Using `createRunner`
+
+For more advanced configurations and reuse, create a `Runner` instance:
+
+```typescript
+import { createRunner } from "runtry";
+
+// Create a reusable runner with default configuration
+const runner = createRunner({
+  retries: 2,
+  timeout: 10000,
+  // Global error handling rules
+  onError: (error) => {
+    // Log to your monitoring service
+    console.error("Global error handler:", error);
+  }
+});
+
+// Use it across your application
+const result = await runner.run(() => complexOperation());
+```
+
+## Next Steps
+
+Now that you have Runtry installed, explore these key features:
+
+<CardGroup cols={2}>
+  <Card title="Error Handling" icon="shield-check" href="/concepts/error-handling">
+    Learn how Runtry normalizes and handles errors.
+  </Card>
+  <Card title="Retry Logic" icon="arrows-rotate" href="/concepts/retry-logic">
+    Configure smart retry strategies for your operations.
+  </Card>
+  <Card title="Concurrency" icon="layer-group" href="/concepts/concurrency">
+    Run multiple tasks with controlled parallelism.
+  </Card>
+  <Card title="React Integration" icon="react" href="/examples/react">
+    See how to use Runtry with React hooks.
+  </Card>
+</CardGroup>

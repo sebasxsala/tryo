@@ -1,0 +1,40 @@
+---
+title: Envío de formularios
+description: Manejo de submit con resultados seguros y cancelación
+---
+
+## Ejemplo
+
+```tsx
+import { useState } from "react";
+import { run } from "runtry";
+
+export function Form() {
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("loading");
+    setError(null);
+
+    const r = await run(() =>
+      fetch("/api/submit", { method: "POST" }).then((x) => x.json())
+    );
+
+    if (r.ok) setStatus("success");
+    else {
+      setStatus("error");
+      setError(r.error.message);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <button type="submit">Enviar</button>
+      <div>{status}</div>
+      {error && <div>{error}</div>}
+    </form>
+  );
+}
+```

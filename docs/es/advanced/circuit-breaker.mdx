@@ -1,0 +1,30 @@
+---
+title: Circuit Breaker
+description: Prevención de cascadas de fallos con apertura y half-open
+---
+
+## Configuración por instancia
+
+```typescript
+import { createRunner } from "runtry";
+
+const runner = createRunner({
+  circuitBreaker: { failureThreshold: 2, resetTimeout: 1000, halfOpenRequests: 1 },
+});
+```
+
+## Comportamiento
+
+- Abre el circuito tras `failureThreshold` errores consecutivos
+- Durante `resetTimeout`, llamadas fallan de forma inmediata
+- En `half-open`, limita el número de pruebas controladas
+
+## Por llamada
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(async () => 1, {
+  circuitBreaker: { failureThreshold: 3, resetTimeout: 1500 },
+});
+```

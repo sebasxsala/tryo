@@ -19,6 +19,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "bun test",
+    "docs:dev": "cd docs && mintlify dev",
+    "docs:dev:es": "cd docs && mintlify dev --config mint.es.json",
+    "docs:build": "cd docs && mintlify build",
+    "docs:preview": "cd docs && mintlify preview",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

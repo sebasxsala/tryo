@@ -1,0 +1,39 @@
+---
+title: Concurrency
+description: Control de concurrencia y modos de ejecución en lotes
+---
+
+## Opciones
+
+- `concurrency`: límite de tareas simultáneas
+- `mode`: en `runAll`, `settle` o `fail-fast`
+
+## `runAll` con límite
+
+```typescript
+import { runAll } from "runtry";
+
+const tasks = Array.from({ length: 10 }, (_, i) => async () => i);
+
+const results = await runAll<number>(tasks, { concurrency: 3 });
+```
+
+## `fail-fast`
+
+Detiene el inicio de nuevas tareas al primer error.
+
+```typescript
+const results = await runAll<number>(tasks, { concurrency: 4, mode: "fail-fast" });
+```
+
+Las tareas no iniciadas quedan en estado `skipped`.
+
+## `runAllOrThrow`
+
+Lanza al primer error y respeta `concurrency`.
+
+```typescript
+import { runAllOrThrow } from "runtry";
+
+const data = await runAllOrThrow<number>(tasks, { concurrency: 2 });
+```

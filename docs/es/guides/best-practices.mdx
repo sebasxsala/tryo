@@ -1,0 +1,32 @@
+---
+title: Buenas prácticas
+description: Patrones recomendados para reintentos, cancelación y observabilidad
+---
+
+## Reusar una instancia
+
+```typescript
+import { createRunner } from "runtry";
+export const runner = createRunner({ ignoreAbort: true });
+```
+
+## Centralizar `mapError`
+
+```typescript
+const runner = createRunner({ mapError: (e) => ({ ...e, message: e.message }) });
+```
+
+## Delimitar reintentos
+
+```typescript
+await runner.run(() => fetch("/api"), {
+  retries: 3,
+  shouldRetry: (attempt, e, ctx) => e.code !== "ABORTED" && ctx.elapsedTime < 5000,
+});
+```
+
+## Usar jitter y backoff
+
+```typescript
+await runner.run(() => fetch("/api"), { retryDelay: 300, jitter: 0.5, backoffStrategy: "exponential" });
+```

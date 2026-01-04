@@ -1,0 +1,34 @@
+---
+title: Uso básico
+description: Primeros pasos con run, runAll y createRunner
+---
+
+## `run` para una tarea
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api").then((x) => x.json()));
+if (r.ok) console.log(r.data);
+else console.error(r.error.code);
+```
+
+## `runAll` para varias tareas
+
+```typescript
+import { runAll, isSuccess } from "runtry";
+
+const tasks = [() => fetch("/a"), () => fetch("/b")];
+const results = await runAll<Response>(tasks, { concurrency: 2 });
+
+const successes = results.filter(isSuccess).map((r) => r.data);
+```
+
+## Reusar un runner
+
+```typescript
+import { createRunner } from "runtry";
+export const runner = createRunner({ ignoreAbort: true });
+
+const r = await runner.run(() => fetch("/api"));
+```

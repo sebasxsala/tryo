@@ -1,0 +1,57 @@
+---
+title: Retry Logic
+description: Retries with delay, jitter, and backoff strategies
+---
+
+## Main options
+
+- `retries`: number of retries
+- `retryDelay`: number, function, or based on attempt and last error
+- `jitter`: randomness to prevent thundering herd
+- `backoffStrategy`: `linear`, `exponential`, `fibonacci` or function
+- `maxDelay`: upper limit of delay
+- `shouldRetry`: decides whether to continue retrying
+- `onRetry`: observability per attempt
+
+## Basic example
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api"), {
+  retries: 3,
+  retryDelay: 300,
+  jitter: 0.5,
+  backoffStrategy: "exponential",
+});
+```
+
+## Dynamic delay
+
+```typescript
+const r = await run(() => fetch("/api"), {
+  retries: 5,
+  retryDelay: (attempt) => attempt * 200,
+  maxDelay: 2000,
+});
+```
+
+## Retry control with `shouldRetry`
+
+```typescript
+const r = await run(() => fetch("/api"), {
+  retries: 5,
+  shouldRetry: (attempt, error, ctx) => error.code !== "ABORTED" && ctx.elapsedTime < 5000,
+});
+```
+
+## Observability with `onRetry`
+
+```typescript
+const r = await run(() => fetch("/api"), {
+  retries: 3,
+  onRetry: (attempt, error, nextDelay) => {
+    console.log(attempt, error.code, nextDelay);
+  },
+});
+```

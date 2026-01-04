@@ -1,0 +1,33 @@
+---
+title: Next.js
+description: Integración en rutas y componentes de Next.js
+---
+
+## Ruta de API con runtry
+
+```ts
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { run } from "runtry";
+
+export async function GET(_req: NextRequest) {
+  const r = await run(() => fetch("https://example.com").then((x) => x.text()), {
+    retries: 2,
+    timeout: 1000,
+  });
+  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error.status || 500 });
+  return NextResponse.json({ data: r.data });
+}
+```
+
+## Server Component con cancelación
+
+```tsx
+import { run } from "runtry";
+
+export default async function Page() {
+  const r = await run(() => fetch("https://example.com").then((x) => x.json()));
+  if (!r.ok) return <div>Error</div>;
+  return <pre>{JSON.stringify(r.data, null, 2)}</pre>;
+}
+```

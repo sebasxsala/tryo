@@ -1,0 +1,93 @@
+---
+title: "Inicio Rápido"
+description: "Empieza a usar Runtry en minutos"
+---
+
+## Instalación
+
+Instala Runtry usando tu gestor de paquetes favorito:
+
+<CodeGroup>
+```bash npm
+npm install runtry
+```
+
+```bash pnpm
+pnpm add runtry
+```
+
+```bash yarn
+yarn add runtry
+```
+
+```bash bun
+bun add runtry
+```
+</CodeGroup>
+
+## Uso Básico
+
+Runtry proporciona una forma sencilla de manejar operaciones asíncronas de manera segura.
+
+### Usando `run` directamente
+
+Para casos de uso simples, puedes usar la función `run` directamente:
+
+```typescript
+import { run } from "runtry";
+
+const result = await run(
+  () => fetch("https://api.example.com/data").then((res) => res.json()),
+  {
+    retries: 3,
+    timeout: 5000,
+  }
+);
+
+if (result.ok) {
+  console.log("Éxito:", result.data);
+} else {
+  console.error("Fallo:", result.error);
+}
+```
+
+### Usando `createRunner`
+
+Para configuraciones más avanzadas y reutilización, crea una instancia de `Runner`:
+
+```typescript
+import { createRunner } from "runtry";
+
+// Crea un runner reutilizable con configuración por defecto
+const runner = createRunner({
+  retries: 2,
+  timeout: 10000,
+  // Reglas globales de manejo de errores
+  onError: (error) => {
+    // Log a tu servicio de monitoreo
+    console.error("Manejador de error global:", error);
+  }
+});
+
+// Úsalo en toda tu aplicación
+const result = await runner.run(() => complexOperation());
+```
+
+## Siguientes Pasos
+
+Ahora que tienes Runtry instalado, explora estas características clave:
+
+<CardGroup cols={2}>
+  <Card title="Manejo de Errores" icon="shield-check" href="/es/concepts/error-handling">
+    Aprende cómo Runtry normaliza y maneja los errores.
+  </Card>
+  <Card title="Lógica de Reintentos" icon="arrows-rotate" href="/es/concepts/retry-logic">
+    Configura estrategias de reintento inteligentes.
+  </Card>
+  <Card title="Concurrencia" icon="layer-group" href="/es/concepts/concurrency">
+    Ejecuta múltiples tareas con paralelismo controlado.
+  </Card>
+  <Card title="Integración con React" icon="react" href="/es/examples/react">
+    Mira cómo usar Runtry con hooks de React.
+  </Card>
+</CardGroup>

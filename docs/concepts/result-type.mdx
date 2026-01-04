@@ -1,0 +1,83 @@
+---
+title: Result Type
+description: Discriminated result for success or error operations, with optional metrics
+---
+
+## Overview
+
+The library functions return a result that avoids exceptions and facilitates flow control.
+
+- `run` returns an object with `ok: true` and `data`, or `ok: false` and `error`.
+- `runAll` returns an array with results per task: `ok`, `error` or `skipped`.
+- Optional metrics help observe attempts, retries, and duration.
+
+## `RunResult` in `run`
+
+```typescript
+import { run } from "runtry";
+
+type User = { id: string; name: string };
+
+const result = await run<User>(() => fetch("/api/user").then((r) => r.json()));
+
+if (result.ok) {
+  console.log(result.data);
+} else {
+  console.error(result.error.code);
+}
+```
+
+Result structure:
+
+- Success: `{ ok: true, data, error: null, metrics? }`
+- Error: `{ ok: false, data: null, error, metrics? }`
+
+Metrics include:
+
+- `totalAttempts`
+- `totalRetries`
+- `totalDuration`
+- `lastError?`
+
+## `RunAllItemResult` in `runAll`
+
+```typescript
+import { runAll } from "runtry";
+
+const tasks = [
+  () => fetch("/a").then((r) => r.text()),
+  () => fetch("/b").then((r) => r.text()),
+  () => fetch("/c").then((r) => r.text()),
+];
+
+const results = await runAll<string>(tasks);
+
+for (const r of results) {
+  if (r.status === "ok") console.log(r.data);
+  if (r.status === "error") console.error(r.error.code);
+}
+```
+
+Possible states per item:
+
+- `ok`: successful task with `data`
+- `error`: failed task with `error`
+- `skipped`: task not executed due to cancellation or fail-fast
+
+## Type helpers for `runAll`
+
+The library exports utilities to discriminate results and improve typing:
+
+```typescript
+import { isSuccess, type SuccessResult, type ErrorResult } from "runtry";
+
+const results = await runAll<number>([
+  async () => 1,
+  async () => {
+    throw new Error("x");
+  },
+]);
+
+const successes: SuccessResult<number>[] = results.filter(isSuccess);
+const failures: ErrorResult<any>[] = results.filter((r) => r.status === "error");
+```

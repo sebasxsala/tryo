@@ -1,0 +1,23 @@
+---
+title: API Calls
+description: HTTP calls with retries, timeout, and error handling
+---
+
+## Example
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api/items").then((x) => x.json()), {
+  retries: 3,
+  retryDelay: (attempt) => attempt * 200,
+  timeout: 2000,
+  onError: (error) => console.error("Request failed:", error),
+});
+
+if (r.ok) {
+  console.log("Data received:", r.data);
+} else {
+  console.error("Error code:", r.error.code);
+}
+```

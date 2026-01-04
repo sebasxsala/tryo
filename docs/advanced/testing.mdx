@@ -1,0 +1,25 @@
+---
+title: Testing
+description: Unit testing retries, circuit breaker, and utilities
+---
+
+## Examples with Bun
+
+```ts
+import { describe, it, expect } from "bun:test";
+import { run, createRunner } from "runtry";
+import { computeBackoffDelay } from "runtry/dist/utils";
+
+describe("run: success", () => {
+  it("returns ok with data", async () => {
+    const r = await run(async () => 42);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("utils: backoff", () => {
+  it("linear/exponential/fibonacci", () => {
+    expect(computeBackoffDelay("linear", 100, 3)).toBe(100);
+  });
+});
+```

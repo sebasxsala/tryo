@@ -1,0 +1,64 @@
+---
+title: Error Handling
+description: Error normalization to AppError and customizable rules
+---
+
+## AppError
+
+The library normalizes unknown values to an `AppError` with:
+
+- `code`: stable identifier
+- `message`: error description
+- `status?`: optional numeric status
+- `meta?`: additional payload
+- `cause?`: original value
+
+## Default normalizer
+
+Maps aborts and timeouts, and classifies common network errors.
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api"));
+
+if (!r.ok && r.error.code === "ABORTED") {
+  console.log("Cancelled");
+}
+```
+
+## Custom rules
+
+Use `errorRule` to define specific mappings and `createRunner` to apply them.
+
+```typescript
+import { createRunner, errorRule } from "runtry";
+
+class HttpError extends Error {
+  constructor(public status: number, public url: string, public body?: unknown) {
+    super("HTTP error");
+  }
+}
+
+const runner = createRunner({
+  rules: [
+    errorRule.instance(HttpError).toError((e) => ({
+      code: "HTTP",
+      message: `Request failed (${e.status})`,
+      status: e.status,
+      meta: { url: e.url, body: e.body },
+      cause: e,
+    })),
+  ],
+});
+```
+
+## Transformation with `mapError`
+
+Allows adjusting the already normalized error to enrich or standardize it.
+
+```typescript
+const r = await run(() => fetch("/api"), {
+  mapError: (e) => ({ ...e, message: `[api] ${e.message}` }),
+});
+```

@@ -1,0 +1,158 @@
+---
+title: Introduction
+description: 'Type-safe error handling for TypeScript with retry logic and concurrency control'
+---
+
+<img
+  className="block dark:hidden"
+  src="/logo/light.svg"
+  alt="Logo Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/logo/dark.svg"
+  alt="Logo Dark"
+/>
+
+## Welcome to Runtry
+
+A modern, type-safe error handling library that makes async operations predictable and resilient.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get up and running in less than 5 minutes
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api-reference/create-runner"
+  >
+    Explore the complete API documentation
+  </Card>
+  <Card
+    title="Examples"
+    icon="lightbulb"
+    href="/examples/react"
+  >
+    Real-world examples and patterns
+  </Card>
+  <Card
+    title="GitHub"
+    icon="github"
+    href="https://github.com/tu-usuario/tu-repo"
+  >
+    View source code and contribute
+  </Card>
+</CardGroup>
+
+## Features
+
+<AccordionGroup>
+  <Accordion icon="check" title="Type-Safe Error Handling">
+    No more `try-catch` blocks. Get discriminated unions with full TypeScript support.
+    ```typescript
+    const result = await runner.run(() => apiCall());
+    if (result.ok) {
+      // TypeScript knows data is available
+      console.log(result.data);
+    }
+    ```
+  </Accordion>
+
+  <Accordion icon="arrows-rotate" title="Smart Retry Logic">
+    Built-in exponential backoff with jitter to prevent thundering herd.
+    ```typescript
+    await runner.run(() => unstableApi(), {
+      retries: 3,
+      retryDelay: (attempt) => Math.pow(2, attempt) * 1000,
+      jitter: true
+    });
+    ```
+  </Accordion>
+
+  <Accordion icon="layer-group" title="Concurrency Control">
+    Run multiple operations with controlled parallelism.
+    ```typescript
+    await runner.all(tasks, { 
+      concurrency: 5,
+      mode: 'fail-fast' 
+    });
+    ```
+  </Accordion>
+
+  <Accordion icon="ban" title="Abort Handling">
+    First-class support for `AbortController` and graceful cancellation.
+    ```typescript
+    await runner.run(() => fetch('/api', { signal }), {
+      ignoreAbort: true
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install runtry
+```
+
+```bash pnpm
+pnpm add runtry
+```
+
+```bash yarn
+yarn add runtry
+```
+
+</CodeGroup>
+
+## Quick Example
+
+```typescript
+import { createRunner } from 'runtry';
+
+const runner = createRunner();
+
+const result = await runner.run(
+  () => fetch('https://api.example.com/users'),
+  {
+    retries: 3,
+    retryDelay: 1000,
+    onError: (error) => console.error(error)
+  }
+);
+
+if (result.ok) {
+  const users = await result.data.json();
+  console.log(users);
+}
+```
+
+<Note>
+  **Pro tip:** Use `createRunner()` once and reuse it across your app for consistent error handling.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Core Concepts"
+    icon="book"
+    href="/concepts/result-type"
+  >
+    Learn about Result types and error normalization
+  </Card>
+  <Card
+    title="React Integration"
+    icon="react"
+    href="/examples/react"
+  >
+    See how to use it with React hooks
+  </Card>
+</CardGroup>

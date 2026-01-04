@@ -1,0 +1,49 @@
+---
+title: Custom Errors
+description: Defining mapping rules and specific error types
+---
+
+## Instance rule
+
+```typescript
+import { createRunner, errorRule } from "runtry";
+
+class HttpError extends Error {
+  constructor(public status: number, public url: string, public body?: unknown) {
+    super("HTTP error");
+  }
+}
+
+type HttpAppError = {
+  code: "HTTP";
+  message: string;
+  status?: number;
+  meta?: { url: string; body?: unknown };
+  cause?: unknown;
+};
+
+const runner = createRunner({
+  rules: [
+    errorRule.instance(HttpError).toError<HttpAppError>((e) => ({
+      code: "HTTP",
+      message: `Request failed (${e.status})`,
+      status: e.status,
+      meta: { url: e.url, body: e.body },
+      cause: e,
+    })),
+  ],
+});
+```
+
+## Custom predicate
+
+```typescript
+const runner2 = createRunner({
+  rules: [
+    errorRule.when((x): x is { code: string } => typeof (x as any)?.code === "string").toError((e) => ({
+      code: (e as any).code,
+      message: "Mapped",
+    })),
+  ],
+});
+```

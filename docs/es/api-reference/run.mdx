@@ -1,0 +1,56 @@
+---
+title: run
+description: Ejecuta una operación asíncrona y devuelve un resultado seguro
+---
+
+## Firma
+
+`run<T>(fn, options?): Promise<RunResult<T>>`
+
+## Opciones clave
+
+- Normalización y transformación: `toError`, `mapError`
+- Callbacks: `onError`, `onSuccess`, `onFinally`, `onRetry`, `onAbort`
+- Control: `ignoreAbort`, `signal`, `timeout`
+- Reintentos: `retries`, `retryDelay`, `shouldRetry`, `jitter`, `backoffStrategy`, `maxDelay`
+- Observabilidad: `logger`
+- Limpieza: `cleanup`
+- Circuito: `circuitBreaker`
+
+## Ejemplo básico
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(() => fetch("/api").then((r) => r.json()));
+```
+
+## Abort y timeout
+
+```typescript
+const controller = new AbortController();
+const r = await run(() => fetch("/api", { signal: controller.signal }), {
+  ignoreAbort: true,
+  timeout: 1000,
+  onAbort: (s) => console.log("aborted"),
+});
+```
+
+## Reintentos con backoff y jitter
+
+```typescript
+const r = await run(() => fetch("/api"), {
+  retries: 4,
+  retryDelay: 300,
+  backoffStrategy: "exponential",
+  jitter: { ratio: 0.5, mode: "full" },
+});
+```
+
+## Circuit breaker por llamada
+
+```typescript
+const r = await run(() => fetch("/api"), {
+  circuitBreaker: { failureThreshold: 2, resetTimeout: 1000, halfOpenRequests: 1 },
+});
+```

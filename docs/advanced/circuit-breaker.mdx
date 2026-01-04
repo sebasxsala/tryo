@@ -1,0 +1,34 @@
+---
+title: Circuit Breaker
+description: Preventing failure cascades with open and half-open states
+---
+
+## Instance configuration
+
+```typescript
+import { createRunner } from "runtry";
+
+const runner = createRunner({
+  circuitBreaker: {
+    failureThreshold: 2,
+    resetTimeout: 1000,
+    halfOpenRequests: 1,
+  },
+});
+```
+
+## Behavior
+
+- Opens the circuit after `failureThreshold` consecutive errors
+- During `resetTimeout`, calls fail immediately
+- In `half-open`, limits the number of controlled probes
+
+## Per call
+
+```typescript
+import { run } from "runtry";
+
+const r = await run(async () => 1, {
+  circuitBreaker: { failureThreshold: 3, resetTimeout: 1500 },
+});
+```

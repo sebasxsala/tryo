@@ -1,0 +1,29 @@
+---
+title: Abort Handling
+description: Cancelación con AbortSignal y control de errores de aborto
+---
+
+## Patrón recomendado
+
+```typescript
+import { run } from "runtry";
+
+const controller = new AbortController();
+const r = await run(() => fetch("/api", { signal: controller.signal }), {
+  ignoreAbort: true,
+  onAbort: (s) => console.log("abort"),
+});
+controller.abort();
+```
+
+Con `ignoreAbort: true`, los abortos no disparan `onError` y devuelven un resultado de error con código `ABORTED`.
+
+## En React
+
+```tsx
+useEffect(() => {
+  const c = new AbortController();
+  run(() => fetch("/api", { signal: c.signal }), { ignoreAbort: true });
+  return () => c.abort();
+}, []);
+```

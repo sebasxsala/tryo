@@ -1,0 +1,32 @@
+---
+title: Best Practices
+description: Recommended patterns for retries, cancellation, and observability
+---
+
+## Reuse an instance
+
+```typescript
+import { createRunner } from "runtry";
+export const runner = createRunner({ ignoreAbort: true });
+```
+
+## Centralize `mapError`
+
+```typescript
+const runner = createRunner({ mapError: (e) => ({ ...e, message: e.message }) });
+```
+
+## Limit retries
+
+```typescript
+await runner.run(() => fetch("/api"), {
+  retries: 3,
+  shouldRetry: (attempt, e, ctx) => e.code !== "ABORTED" && ctx.elapsedTime < 5000,
+});
+```
+
+## Use jitter and backoff
+
+```typescript
+await runner.run(() => fetch("/api"), { retryDelay: 300, jitter: 0.5, backoffStrategy: "exponential" });
+```
