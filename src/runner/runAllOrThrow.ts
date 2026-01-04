@@ -1,7 +1,13 @@
 import { run } from "./run";
 import type { AppError } from "../error/types";
 import type { RunOptions, RunResult } from "../types";
+import { validateOptions } from "../types";
 
+/**
+ * Opciones para `runAllOrThrow`:
+ * - Hereda todas las opciones de `RunOptions`
+ * - `concurrency`: límite de tareas simultáneas; si falla una, se lanza
+ */
 export type RunAllOrThrowOptions<T, E extends AppError = AppError> = RunOptions<
   T,
   E
@@ -18,6 +24,7 @@ export async function runAllOrThrow<T, E extends AppError = AppError>(
   options: RunAllOrThrowOptions<T, E> = {}
 ): Promise<T[]> {
   const { concurrency = Infinity, ...runOptions } = options;
+  validateOptions(runOptions);
 
   if (tasks.length === 0) return [];
 

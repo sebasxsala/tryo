@@ -1,6 +1,7 @@
 import type { AppError } from "../error/types";
 import { toAppError as defaultToAppError } from "../error/normalize";
 import type { RunOptions, RunResult } from "../types";
+import { validateOptions } from "../types";
 import { applyJitter, resolveRetryDelay, sleep } from "../utils";
 
 /**
@@ -27,36 +28,99 @@ export async function run<T, E extends AppError = AppError>(
     retryDelay,
     shouldRetry = () => true,
     jitter = { ratio: 0.5, mode: "full" },
+    backoffStrategy,
+    maxDelay,
+    timeout,
+    signal,
+    onRetry,
+    logger,
+    cleanup,
+    onAbort,
   } = options;
 
   const defaultBaseDelay = retries > 0 ? 300 : 0;
 
+  validateOptions(options);
+
+  if (signal?.aborted) {
+    try {
+      onAbort?.(signal);
+    } finally {
+      const err = toError(new DOMException("Aborted", "AbortError"));
+      const mapped = mapError ? mapError(err) : err;
+      if (!ignoreAbort) {
+        onError?.(mapped);
+      }
+      onFinally?.();
+      return { ok: false, data: null, error: mapped, metrics: { totalAttempts: 0, totalRetries: 0, totalDuration: 0, lastError: mapped } };
+    }
+  }
+
+  const startedAt = Date.now();
   let attempt = 0;
+  let lastError: E | undefined;
 
   while (true) {
     try {
-      const data = await fn();
+      const timeoutPromise =
+        timeout && timeout > 0
+          ? new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new DOMException("Timeout", "TimeoutError")),
+                timeout
+              )
+            )
+          : null;
+
+      const data = await (timeoutPromise ? Promise.race([fn(), timeoutPromise]) : fn());
       onSuccess?.(data);
       onFinally?.();
-      return { ok: true, data, error: null };
+      const totalDuration = Date.now() - startedAt;
+      const metrics = {
+        totalAttempts: attempt + 1,
+        totalRetries: attempt,
+        totalDuration,
+        lastError,
+      };
+      logger?.debug?.("run:success", { attempts: metrics.totalAttempts, duration: metrics.totalDuration });
+      return { ok: true, data, error: null, metrics };
     } catch (e) {
       let err = toError(e);
       if (mapError) err = mapError(err);
 
-      const isAborted = err.code === "ABORTED";
+      const isAborted =
+        (err as any)?.code === "ABORTED" ||
+        (e instanceof DOMException && e.name === "AbortError") ||
+        signal?.aborted;
 
       if (isAborted) {
-        if (!ignoreAbort) {
-          onError?.(err);
+        try {
+          if (signal) onAbort?.(signal);
+        } finally {
+          if (!ignoreAbort) {
+            onError?.(err);
+          }
+          onFinally?.();
+          const totalDuration = Date.now() - startedAt;
+          const metrics = {
+            totalAttempts: attempt,
+            totalRetries: attempt,
+            totalDuration,
+            lastError: err,
+          };
+          logger?.debug?.("run:aborted", { attempt, duration: metrics.totalDuration });
+          return { ok: false, data: null, error: err, metrics };
         }
-
-        onFinally?.();
-        return { ok: false, data: null, error: err };
-        // If not ignoring abort, we fall through to onError and return
       }
 
+      lastError = err;
       const nextAttempt = attempt + 1;
-      const canRetry = attempt < retries && shouldRetry(nextAttempt, err);
+      const context = {
+        totalAttempts: nextAttempt,
+        elapsedTime: Date.now() - startedAt,
+      };
+      const decision = await Promise.resolve(shouldRetry(nextAttempt, err, context));
+      const canRetry = attempt < retries && decision;
 
       if (canRetry) {
         attempt = nextAttempt;
@@ -65,13 +129,17 @@ export async function run<T, E extends AppError = AppError>(
           retryDelay,
           attempt,
           err,
-          defaultBaseDelay
+          defaultBaseDelay,
+          backoffStrategy,
+          maxDelay
         );
 
         if (!Number.isFinite(delay) || delay < 0) delay = 0;
 
         delay = applyJitter(delay, jitter);
 
+        onRetry?.(attempt, err, delay);
+        logger?.debug?.("run:retry", { attempt, delay });
         if (delay > 0) await sleep(delay);
         continue;
       }
@@ -79,7 +147,15 @@ export async function run<T, E extends AppError = AppError>(
       // Final failure or aborted
       onError?.(err);
       onFinally?.();
-      return { ok: false, data: null, error: err };
+      const totalDuration = Date.now() - startedAt;
+      const metrics = {
+        totalAttempts: attempt + 1,
+        totalRetries: attempt,
+        totalDuration,
+        lastError: err,
+      };
+      logger?.error?.("run:error", err);
+      return { ok: false, data: null, error: err, metrics };
     }
   }
 }

@@ -1,11 +1,34 @@
 import { run } from "./run";
 import type { AppError } from "../error/types";
 import type { RunOptions, RunResult } from "../types";
+import { validateOptions } from "../types";
 
+/**
+ * Resultado discriminado por ítem en `runAll`:
+ * - "ok": tarea exitosa con `data`
+ * - "error": tarea fallida con `error`
+ * - "skipped": tarea no ejecutada por cancelación/fail-fast/concurrencia
+ */
 export type RunAllItemResult<T, E extends AppError = AppError> =
   | { status: "ok"; ok: true; data: T; error: null }
   | { status: "error"; ok: false; data: null; error: E }
   | { status: "skipped"; ok: false; data: null; error: null };
+
+/** Helper para discriminar resultados exitosos. */
+export type SuccessResult<T> = Extract<
+  RunAllItemResult<T, any>,
+  { status: "ok" }
+>;
+/** Helper para discriminar resultados con error. */
+export type ErrorResult<E> = Extract<
+  RunAllItemResult<any, E extends AppError ? E : AppError>,
+  { status: "error" }
+>;
+
+/** Type guard que detecta `status: "ok"` con tipado de `data`. */
+export const isSuccess = <T, E extends AppError = AppError>(
+  r: RunAllItemResult<T, E>
+): r is SuccessResult<T> => r.status === "ok";
 
 export type RunAllOptions<T, E extends AppError = AppError> = RunOptions<
   T,
@@ -31,6 +54,7 @@ export async function runAll<T, E extends AppError = AppError>(
   options: RunAllOptions<T, E> = {}
 ): Promise<RunAllItemResult<T, E>[]> {
   const { concurrency = Infinity, mode = "settle", ...runOptions } = options;
+  validateOptions(runOptions);
 
   if (tasks.length === 0) return [];
 

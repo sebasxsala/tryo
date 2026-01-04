@@ -1,7 +1,14 @@
 export { run } from "./runner/run";
 export { runAll } from "./runner/runAll";
-export type { RunAllOptions } from "./runner/runAll";
+export type { RunAllOptions, SuccessResult, ErrorResult } from "./runner/runAll";
+export { isSuccess } from "./runner/runAll";
 export type { RunOptions, RunResult, RetryOptions } from "./types";
+export type {
+  BackoffStrategy,
+  CircuitBreakerOptions,
+  Metrics,
+  RetryContext,
+} from "./types";
 
 export type { AppError, AppErrorCode } from "./error/types";
 export {

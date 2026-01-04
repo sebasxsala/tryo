@@ -6,6 +6,7 @@ import {
 } from "../error/normalize";
 import { run as baseRun } from "./run";
 import type { RunOptions, RunResult } from "../types";
+import type { CircuitBreakerOptions } from "../types";
 import { runAllOrThrow as baseRunAllOrThrow } from "./runAllOrThrow";
 import {
   runAll as baseRunAll,
@@ -37,6 +38,11 @@ export type CreateRunnerOptions<E extends AppError = AppError> = {
 
   /** Optional default mapper for all runs */
   mapError?: (error: E) => E;
+  /**
+   * Circuit breaker por defecto para todas las ejecuciones de la instancia.
+   * Puede ser sobreescrito por `options.circuitBreaker` en cada `run`.
+   */
+  circuitBreaker?: CircuitBreakerOptions;
 };
 
 const composeMapError =
@@ -81,6 +87,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
     toError: customToError,
     ignoreAbort = true,
     mapError: defaultMapError,
+    circuitBreaker: defaultCircuitBreaker,
   } = opts as CreateRunnerOptions<E>;
 
   const toError =
@@ -89,16 +96,89 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
       ? createNormalizer<E>(rules as unknown as Rule<E>[], fallback)
       : (toAppError as unknown as (e: unknown) => E));
 
+  let failureCount = 0;
+  let openUntil: number | null = null;
+  let halfOpenRemaining: number | null = null;
+
   return {
     run<T>(
       fn: () => Promise<T>,
       options: RunOptions<T, E> = {}
     ): Promise<RunResult<T, E>> {
+      const cb = options.circuitBreaker ?? defaultCircuitBreaker;
+      const now = Date.now();
+
+      if (cb) {
+        if (openUntil && now < openUntil) {
+          const err = toError(new Error("Circuit open"));
+          const mapped = composeMapError(
+            defaultMapError,
+            options.mapError
+          )(err);
+          options.onError?.(mapped);
+          options.onFinally?.();
+          return Promise.resolve({
+            ok: false,
+            data: null,
+            error: mapped,
+            metrics: {
+              totalAttempts: 0,
+              totalRetries: 0,
+              totalDuration: 0,
+              lastError: mapped,
+            },
+          });
+        }
+        if (openUntil && now >= openUntil) {
+          openUntil = null;
+          failureCount = 0;
+          halfOpenRemaining = cb.halfOpenRequests ?? 1;
+        }
+        if (halfOpenRemaining != null) {
+          if (halfOpenRemaining <= 0) {
+            const err = toError(new Error("Circuit half-open limit"));
+            const mapped = composeMapError(
+              defaultMapError,
+              options.mapError
+            )(err);
+            options.onError?.(mapped);
+            options.onFinally?.();
+            return Promise.resolve({
+              ok: false,
+              data: null,
+              error: mapped,
+              metrics: {
+                totalAttempts: 0,
+                totalRetries: 0,
+                totalDuration: 0,
+                lastError: mapped,
+              },
+            });
+          } else {
+            halfOpenRemaining--;
+          }
+        }
+      }
+
       return baseRun(fn, {
         toError,
         ignoreAbort,
         ...options,
         mapError: composeMapError(defaultMapError, options.mapError),
+      }).then((r) => {
+        if (!cb) return r;
+        if (!r.ok) {
+          failureCount++;
+          if (failureCount >= cb.failureThreshold) {
+            openUntil = Date.now() + cb.resetTimeout;
+            halfOpenRemaining = null;
+          }
+        } else {
+          failureCount = 0;
+          openUntil = null;
+          halfOpenRemaining = null;
+        }
+        return r;
       });
     },
     all<T>(

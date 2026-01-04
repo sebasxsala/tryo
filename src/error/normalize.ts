@@ -30,5 +30,8 @@ export function toAppError(err: unknown): AppError {
   if (err instanceof DOMException && err.name === "AbortError") {
     return { code: "ABORTED", message: "Request cancelled", cause: err };
   }
+  if (err instanceof DOMException && err.name === "TimeoutError") {
+    return { code: "TIMEOUT", message: "Request timed out", cause: err };
+  }
   return defaultFallback(err);
 }

@@ -4,7 +4,7 @@ Run async functions and return a typed `Result` **instead of throwing**.
 
 - ✅ No repetitive `try/catch` in UI code
 - ✅ Typed success/error handling
-- ✅ Pluggable error normalization (matchers / adapters)
+- ✅ Pluggable error normalization (rules)
 - ✅ **Automatic Retries** with backoff & jitter
 - ✅ **Concurrency control** with `runAll`
 
@@ -35,7 +35,52 @@ const result = await run(async () => {
 if (result.ok) {
   console.log("data:", result.data);
 } else {
-  console.error("error:", result.error.code, result.error.message);
+  console.log("error:", result.error.code); // "UNKNOWN" | "ABORTED" | ...
+}
+```
+
+---
+
+## `createRunner()` (Recommended)
+
+Define your error rules once and reuse them. Types are inferred automatically!
+
+```ts
+import { createRunner, rules, errorRule } from "runtry";
+import { ZodError } from "zod";
+import { AxiosError } from "axios";
+
+const runner = createRunner({
+  rules: [
+    // Core rules (optional)
+    rules.abort(), // code: "ABORTED"
+    rules.timeout(), // code: "TIMEOUT"
+
+    // Custom rules (type inferred!)
+    errorRule.instance(ZodError).toError((e) => ({
+      code: "VALIDATION_ERROR", // Literal type "VALIDATION_ERROR"
+      message: "Validation failed",
+      meta: { issues: e.issues },
+    })),
+
+    errorRule.instance(AxiosError).toError((e) => ({
+      code: "HTTP_ERROR",
+      message: e.message,
+      status: e.response?.status,
+    })),
+  ],
+});
+
+// Now use it everywhere
+const result = await runner.run(fetchUser);
+
+if (!result.ok) {
+  // ⭐️ Strict typing based on your rules!
+  // error.code is "ABORTED" | "TIMEOUT" | "VALIDATION_ERROR" | "HTTP_ERROR" | "UNKNOWN"
+
+  if (result.error.code === "VALIDATION_ERROR") {
+    console.log(result.error.meta.issues); // Typed!
+  }
 }
 ```
 
@@ -45,166 +90,63 @@ if (result.ok) {
 
 ### `run(fn, options?)`
 
-```ts
-import type { AppError, RunOptions, RunResult } from "runtry";
-
-declare function run<T, E extends AppError = AppError>(
-  fn: () => Promise<T>,
-  options?: RunOptions<T, E>
-): Promise<RunResult<T, E>>;
-```
-
-#### Options
-
-- `toError`: Custom error normalizer.
-- `onError`: Callback for final failure.
-- `onSuccess`: Callback for success.
-- `onFinally`: Callback after completion (success or fail).
-- `ignoreAbort`: Don't trigger onError for Abort/Cancellation (default: true).
-
-#### Retries
-
-You can configure automatic retries for failed operations:
+Executes a single async function.
 
 ```ts
-await run(fetchData, {
+await runner.run(fn, {
   retries: 3,
-  retryDelay: (attempt, err) => attempt * 1000,
-  jitter: { ratio: 0.5, mode: "full" }, // adds randomization to delay
-  shouldRetry: (attempt, err) => err.status === 503, // optional filter
+  retryDelay: (attempt) => attempt * 1000,
+  onError: (err) => toast.error(err.message),
+  onSuccess: (data) => console.log(data),
 });
 ```
 
----
-
 ### `runAll(tasks, options?)`
 
-Executes multiple tasks with **concurrency control**.
+Executes multiple tasks with concurrency control.
 
 ```ts
-import { runAll } from "runtry";
-
 const tasks = [
   () => fetch("/api/1"),
   () => fetch("/api/2"),
   () => fetch("/api/3"),
 ];
 
-// Run max 2 at a time
-const results = await runAll(tasks, {
+// Run max 2 at a time, stop if any fails
+const results = await runner.all(tasks, {
   concurrency: 2,
-  onSettled: (res, index) => console.log(`Task ${index} done`),
-  retries: 2, // Inherits all run() options including retries!
+  mode: "fail-fast", // or "settle" (default)
 });
+```
+
+### `runAllOrThrow(tasks, options?)`
+
+Like `Promise.all` but with concurrency control and retries. Throws the first error (normalized).
+
+```ts
+try {
+  const data = await runner.allOrThrow(tasks, { concurrency: 5 });
+} catch (err) {
+  // err is your typed AppError
+  console.error(err.code);
+}
 ```
 
 ---
 
-## Normalizing errors (matchers)
-
-`runtry` can normalize unknown thrown values (`unknown`) into a consistent `AppError` shape.
-
-### 1) Create matchers (adapters)
+## React Example
 
 ```ts
-import {
-  createNormalizer,
-  abortMatcher,
-  matchInstance,
-  defaultFallback,
-} from "runtry";
-import type { AppError } from "runtry";
-import { HttpError } from "./http-error"; // your app error class
-
-type MyMeta = { url?: string; body?: unknown };
-
-const httpMatcher = matchInstance(HttpError, (e) => ({
-  code: "HTTP",
-  message: e.message,
-  status: e.status,
-  meta: { url: e.url, body: e.body } as MyMeta,
-  cause: e,
-}));
-
-const toError = createNormalizer<AppError<MyMeta>>(
-  [abortMatcher, httpMatcher],
-  (e) => defaultFallback(e) as AppError<MyMeta>
-);
-```
-
-### 2) Use the normalizer in `run`
-
-```ts
-import { run } from "runtry";
-
-const res = await run(getDocuments, {
-  toError,
-  onError: (e) => console.log(e.status, e.message),
-});
-```
-
----
-
-## `createRunner()` (configure once, reuse everywhere)
-
-If you don't want to pass `toError` every time, create a runner:
-
-```ts
-import {
-  createRunner,
-  abortMatcher,
-  matchInstance,
-  defaultFallback,
-} from "runtry";
-import { HttpError } from "./http-error";
-
-const runner = createRunner({
-  matchers: [
-    abortMatcher,
-    matchInstance(HttpError, (e) => ({
-      code: "HTTP",
-      message: e.message,
-      status: e.status,
-      meta: { url: e.url, body: e.body },
-      cause: e,
-    })),
-  ],
-  fallback: defaultFallback,
-  ignoreAbort: true, // default
-});
-
-const result = await client.run(getDocuments, {
-  onError: (e) => console.log(e.code, e.message),
-});
-```
-
----
-
-## React example (loading + toast, no try/catch)
-
-```ts
-import { createRunner, abortMatcher, defaultFallback } from "runtry";
-
-const runner = createRunner({
-  matchers: [abortMatcher],
-  fallback: defaultFallback,
-});
-
 useEffect(() => {
   let cancelled = false;
-  setIsLoading(true);
 
-  client.run(getDocuments, {
-    onSuccess: (docs) => {
-      if (cancelled) return;
-      setUploadedFiles(docs.map(mapper));
+  runner.run(fetchData, {
+    onSuccess: (data) => {
+      if (!cancelled) setData(data);
     },
-    onError: (e) => {
-      if (e.code === "ABORTED") return;
-      toast.error(e.message);
-    },
-    onFinally: () => {
-      if (!cancelled) setIsLoading(false);
+    onError: (err) => {
+      if (err.code === "ABORTED") return;
+      toast.error(err.message);
     },
   });
 

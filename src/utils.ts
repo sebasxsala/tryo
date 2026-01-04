@@ -1,4 +1,4 @@
-import type { Jitter, RetryDelayFn } from "./types";
+import type { Jitter, RetryDelayFn, BackoffStrategy } from "./types";
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -11,11 +11,27 @@ export function resolveRetryDelay<E>(
   retryDelay: number | RetryDelayFn<E> | undefined,
   attempt: number,
   err: E,
-  defaultBaseDelay: number
+  defaultBaseDelay: number,
+  backoffStrategy?: BackoffStrategy,
+  maxDelay?: number
 ): number {
-  if (typeof retryDelay === "function") return retryDelay(attempt, err);
-  if (typeof retryDelay === "number") return retryDelay;
-  return defaultBaseDelay;
+  let base =
+    typeof retryDelay === "function"
+      ? (retryDelay as RetryDelayFn<E>)(attempt, err)
+      : typeof retryDelay === "number"
+      ? (retryDelay as number)
+      : typeof retryDelay === "undefined"
+      ? defaultBaseDelay
+      : defaultBaseDelay;
+
+  const backoff = computeBackoffDelay(
+    backoffStrategy ?? "linear",
+    base,
+    attempt
+  );
+
+  const out = maxDelay != null ? clamp(backoff, 0, maxDelay) : backoff;
+  return Number.isFinite(out) ? out : 0;
 }
 
 export function applyJitter(delay: number, jitter: Jitter | undefined): number {
@@ -46,4 +62,31 @@ export function applyJitter(delay: number, jitter: Jitter | undefined): number {
 
   // full jitter
   return rng() * delay * (1 + r);
+}
+
+export function computeBackoffDelay(
+  strategy: BackoffStrategy,
+  base: number,
+  attempt: number
+): number {
+  if (typeof strategy === "function") {
+    const v = strategy(attempt);
+    return v >= 0 ? v : 0;
+  }
+  const b = base >= 0 ? base : 0;
+  const a = attempt >= 1 ? attempt : 1;
+  if (strategy === "linear") return b;
+  if (strategy === "exponential") return b * Math.pow(2, a - 1);
+  if (strategy === "fibonacci") {
+    if (a <= 2) return b;
+    let prev = 1;
+    let curr = 1;
+    for (let i = 3; i <= a; i++) {
+      const next = prev + curr;
+      prev = curr;
+      curr = next;
+    }
+    return b * curr;
+  }
+  return b;
 }
