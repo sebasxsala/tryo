@@ -27,7 +27,8 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "mint": "latest"
   },
   "license": "MIT",
   "homepage": "https://github.com/sebasxsala/runtry#readme",
