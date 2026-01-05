@@ -34,7 +34,6 @@ export async function run<T, E extends AppError = AppError>(
     signal,
     onRetry,
     logger,
-    cleanup,
     onAbort,
   } = options;
 
@@ -52,7 +51,17 @@ export async function run<T, E extends AppError = AppError>(
         onError?.(mapped);
       }
       onFinally?.();
-      return { ok: false, data: null, error: mapped, metrics: { totalAttempts: 0, totalRetries: 0, totalDuration: 0, lastError: mapped } };
+      return {
+        ok: false,
+        data: null,
+        error: mapped,
+        metrics: {
+          totalAttempts: 0,
+          totalRetries: 0,
+          totalDuration: 0,
+          lastError: mapped,
+        },
+      };
     }
   }
 
@@ -62,19 +71,31 @@ export async function run<T, E extends AppError = AppError>(
 
   while (true) {
     try {
+      let timeoutId: any = null;
       const timeoutPromise =
         timeout && timeout > 0
-          ? new Promise<never>((_, reject) =>
-              setTimeout(
+          ? new Promise<never>((_, reject) => {
+              timeoutId = setTimeout(
                 () => reject(new DOMException("Timeout", "TimeoutError")),
                 timeout
-              )
-            )
+              );
+            })
           : null;
 
-      const data = await (timeoutPromise ? Promise.race([fn(), timeoutPromise]) : fn());
-      onSuccess?.(data);
-      onFinally?.();
+      const data = await (timeoutPromise
+        ? Promise.race([fn(), timeoutPromise])
+        : fn());
+      if (timeoutId) clearTimeout(timeoutId);
+      try {
+        onSuccess?.(data);
+      } catch (e) {
+        logger?.error?.("run:onSuccess failed", toError(e));
+      }
+      try {
+        onFinally?.();
+      } catch (e) {
+        logger?.error?.("run:onFinally failed", toError(e));
+      }
       const totalDuration = Date.now() - startedAt;
       const metrics = {
         totalAttempts: attempt + 1,
@@ -82,7 +103,10 @@ export async function run<T, E extends AppError = AppError>(
         totalDuration,
         lastError,
       };
-      logger?.debug?.("run:success", { attempts: metrics.totalAttempts, duration: metrics.totalDuration });
+      logger?.debug?.("run:success", {
+        attempts: metrics.totalAttempts,
+        duration: metrics.totalDuration,
+      });
       return { ok: true, data, error: null, metrics };
     } catch (e) {
       let err = toError(e);
@@ -95,12 +119,26 @@ export async function run<T, E extends AppError = AppError>(
 
       if (isAborted) {
         try {
-          if (signal) onAbort?.(signal);
+          if (signal) {
+            try {
+              onAbort?.(signal);
+            } catch (e) {
+              logger?.error?.("run:onAbort failed", toError(e));
+            }
+          }
         } finally {
           if (!ignoreAbort) {
-            onError?.(err);
+            try {
+              onError?.(err);
+            } catch (e) {
+              logger?.error?.("run:onError failed", toError(e));
+            }
           }
-          onFinally?.();
+          try {
+            onFinally?.();
+          } catch (e) {
+            logger?.error?.("run:onFinally failed", toError(e));
+          }
           const totalDuration = Date.now() - startedAt;
           const metrics = {
             totalAttempts: attempt,
@@ -108,7 +146,10 @@ export async function run<T, E extends AppError = AppError>(
             totalDuration,
             lastError: err,
           };
-          logger?.debug?.("run:aborted", { attempt, duration: metrics.totalDuration });
+          logger?.debug?.("run:aborted", {
+            attempt,
+            duration: metrics.totalDuration,
+          });
           return { ok: false, data: null, error: err, metrics };
         }
       }
@@ -119,7 +160,9 @@ export async function run<T, E extends AppError = AppError>(
         totalAttempts: nextAttempt,
         elapsedTime: Date.now() - startedAt,
       };
-      const decision = await Promise.resolve(shouldRetry(nextAttempt, err, context));
+      const decision = await Promise.resolve(
+        shouldRetry(nextAttempt, err, context)
+      );
       const canRetry = attempt < retries && decision;
 
       if (canRetry) {
@@ -145,8 +188,16 @@ export async function run<T, E extends AppError = AppError>(
       }
 
       // Final failure or aborted
-      onError?.(err);
-      onFinally?.();
+      try {
+        onError?.(err);
+      } catch (e) {
+        logger?.error?.("run:onError failed", toError(e));
+      }
+      try {
+        onFinally?.();
+      } catch (e) {
+        logger?.error?.("run:onFinally failed", toError(e));
+      }
       const totalDuration = Date.now() - startedAt;
       const metrics = {
         totalAttempts: attempt + 1,

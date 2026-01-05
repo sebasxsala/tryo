@@ -60,8 +60,8 @@ export function applyJitter(delay: number, jitter: Jitter | undefined): number {
     return delay * (1 - r) + rng() * delay * r;
   }
 
-  // full jitter
-  return rng() * delay * (1 + r);
+  // full jitter: add random extra up to delay*r
+  return delay + rng() * delay * r;
 }
 
 export function computeBackoffDelay(

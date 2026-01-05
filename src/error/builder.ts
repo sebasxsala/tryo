@@ -12,7 +12,7 @@ class ErrorRuleBuilder<E> {
 }
 
 export const errorRule = {
-  instance<E extends new (...args: any[]) => any>(ctor: E) {
+  instance<E extends new (...args: any[]) => unknown>(ctor: E) {
     return new ErrorRuleBuilder<InstanceType<E>>(
       (err): err is InstanceType<E> => err instanceof ctor
     );

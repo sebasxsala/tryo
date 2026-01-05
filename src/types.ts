@@ -132,10 +132,6 @@ export type RunOptions<T, E extends AppError = AppError> = RetryOptions<E> & {
     error?: (msg: string, error: E) => void;
   };
   /**
-   * Resource cleanup that always runs at the end.
-   */
-  cleanup?: () => void | Promise<void>;
-  /**
    * Callback on abort, useful for reacting to `AbortSignal`.
    */
   onAbort?: (signal: AbortSignal) => void;

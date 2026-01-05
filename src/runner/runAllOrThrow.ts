@@ -1,6 +1,6 @@
 import { run } from "./run";
 import type { AppError } from "../error/types";
-import type { RunOptions, RunResult } from "../types";
+import type { RunOptions } from "../types";
 import { validateOptions } from "../types";
 
 /**

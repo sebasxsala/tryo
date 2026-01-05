@@ -1,5 +1,3 @@
-import { createRunner } from "../runner/runner";
-import { errorRule } from "./builder";
 import type { AppError, Rule } from "./types";
 
 export const abort: Rule<AppError<"ABORTED">> = (err) => {
@@ -32,11 +30,12 @@ export const timeout: Rule<AppError<"TIMEOUT">> = (err) => {
 
 export const httpStatus: Rule<AppError<"HTTP">> = (err) => {
   if (typeof err === "object" && err !== null) {
-    const status = (err as any).status ?? (err as any).statusCode;
+    const obj = err as Record<string, unknown>;
+    const status = obj.status ?? obj.statusCode;
     if (typeof status === "number") {
       return {
         code: "HTTP",
-        message: (err as any).message || `HTTP Error ${status}`,
+        message: typeof obj.message === "string" ? obj.message : `HTTP Error ${status}`,
         status,
         cause: err,
       };
@@ -71,9 +70,9 @@ export const message: Rule<AppError<"UNKNOWN">> = (err) => {
     typeof err === "object" &&
     err !== null &&
     "message" in err &&
-    typeof (err as any).message === "string"
+    typeof (err as { message: unknown }).message === "string"
   ) {
-    return { code: "UNKNOWN", message: (err as any).message, cause: err };
+    return { code: "UNKNOWN", message: (err as { message: string }).message, cause: err };
   }
   return null;
 };
