@@ -1,6 +1,6 @@
 {
   "name": "runtry",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Run sync/async functions and return a typed Result instead of throwing.",
   "type": "module",
   "sideEffects": false,
