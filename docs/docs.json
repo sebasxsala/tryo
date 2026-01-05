@@ -59,15 +59,7 @@
               "api-reference/trybox",
               "api-reference/run",
               "api-reference/run-all",
-              {
-                "group": "Endpoints",
-                "pages": [
-                  "api-reference/endpoint/create",
-                  "api-reference/endpoint/get",
-                  "api-reference/endpoint/delete",
-                  "api-reference/endpoint/webhook"
-                ]
-              }
+              "api-reference/run-all-settled"
             ]
           }
         ]
@@ -120,16 +112,7 @@
             "pages": [
               "es/api-reference/trybox",
               "es/api-reference/run",
-              "es/api-reference/run-all",
-              {
-                "group": "Endpoints",
-                "pages": [
-                  "es/api-reference/endpoint/create",
-                  "es/api-reference/endpoint/get",
-                  "es/api-reference/endpoint/delete",
-                  "es/api-reference/endpoint/webhook"
-                ]
-              }
+              "es/api-reference/run-all"
             ]
           }
         ]
