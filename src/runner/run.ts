@@ -1,6 +1,6 @@
 import type { AppError } from "../error/types";
 import { toAppError as defaultToAppError } from "../error/normalize";
-import type { RunOptions, RunResult } from "../types";
+import type { MaybePromise, RunOptions, RunResult } from "../types";
 import { validateOptions } from "../types";
 import { applyJitter, resolveRetryDelay, sleep } from "../utils";
 
@@ -14,7 +14,7 @@ import { applyJitter, resolveRetryDelay, sleep } from "../utils";
  * React effects, and any async context.
  */
 export async function run<T, E extends AppError = AppError>(
-  fn: () => Promise<T>,
+  fn: () => MaybePromise<T>,
   options: RunOptions<T, E> = {}
 ): Promise<RunResult<T, E>> {
   const {

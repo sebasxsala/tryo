@@ -5,7 +5,7 @@ import {
   toAppError,
 } from "../error/normalize";
 import { run as baseRun } from "./run";
-import type { RunOptions, RunResult } from "../types";
+import type { MaybePromise, RunOptions, RunResult } from "../types";
 import type { CircuitBreakerOptions } from "../types";
 import { runAllOrThrow as baseRunAllOrThrow } from "./runAllOrThrow";
 import {
@@ -56,11 +56,11 @@ export interface Runner<E extends AppError> {
     options?: RunOptions<T, E>
   ): Promise<RunResult<T, E>>;
   all<T>(
-    fns: Array<() => Promise<T>>,
+    fns: Array<() => MaybePromise<T>>,
     options?: RunAllOptions<T, E>
   ): Promise<RunAllItemResult<T, E>[]>;
   allOrThrow<T>(
-    fns: (() => Promise<T>)[],
+    fns: Array<() => MaybePromise<T>>,
     options?: RunOptions<T, E>
   ): Promise<T[]>;
 }

@@ -2,6 +2,8 @@ import type { AppError } from "./error/types";
 
 export type RetryDelayFn<E> = (attempt: number, err: E) => number;
 
+export type MaybePromise<T> = T | Promise<T>;
+
 export type Jitter =
   | boolean
   | number // ratio 0..1

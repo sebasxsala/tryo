@@ -1,6 +1,6 @@
 import { run } from "./run";
 import type { AppError } from "../error/types";
-import type { RunOptions, RunResult } from "../types";
+import type { MaybePromise, RunOptions, RunResult } from "../types";
 import { validateOptions } from "../types";
 
 /**
@@ -50,7 +50,7 @@ export type RunAllOptions<T, E extends AppError = AppError> = RunOptions<
 };
 
 export async function runAll<T, E extends AppError = AppError>(
-  tasks: Array<() => Promise<T>>,
+  tasks: Array<() => MaybePromise<T>>,
   options: RunAllOptions<T, E> = {}
 ): Promise<RunAllItemResult<T, E>[]> {
   const { concurrency = Infinity, mode = "settle", ...runOptions } = options;

@@ -1,6 +1,6 @@
 # runtry
 
-Run async functions and return a typed `Result` **instead of throwing**.
+Run sync/async functions and return a typed `Result` **instead of throwing**.
 
 - ✅ No repetitive `try/catch` in UI code
 - ✅ Typed success/error handling
