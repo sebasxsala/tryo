@@ -10,7 +10,7 @@
   <circle cx="240" cy="160" r="60" fill="#1f2937"/>
   <circle cx="340" cy="160" r="40" fill="#0f172a"/>
   <text x="480" y="170" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="36" fill="#f9fafb" text-anchor="middle">
-    Runtry Docs
+    Trybox Docs
   </text>
   <text x="480" y="210" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="18" fill="#e5e7eb" text-anchor="middle">
     Type-safe retries, concurrency and error handling

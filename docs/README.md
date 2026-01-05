@@ -1,8 +1,8 @@
-# Runtry Documentation
+# Trybox Documentation
 
-This repository contains the source code for the [Runtry](https://github.com/sebastiansala/runtry) documentation, built with [Mintlify](https://mintlify.com/).
+This repository contains the source code for the [Trybox](https://github.com/sebastiansala/trybox) documentation, built with [Mintlify](https://mintlify.com/).
 
-Runtry is a TypeScript library for resilient task execution, featuring retries, circuit breakers, and concurrency control.
+Trybox is a TypeScript library for resilient task execution, featuring retries, circuit breakers, and concurrency control.
 
 ## Running Locally
 

@@ -6,11 +6,14 @@ description: Execute multiple tasks with limits and result aggregation
 ## Example
 
 ```typescript
-import { runAllSettled, isSuccess } from "runtry";
+import { runAllSettled, isSuccess } from "trybox";
 
 const tasks = Array.from({ length: 20 }, (_, i) => async () => i * 2);
 
-const results = await runAllSettled<number>(tasks, { concurrency: 5, mode: "settle" });
+const results = await runAllSettled<number>(tasks, {
+  concurrency: 5,
+  mode: "settle",
+});
 
 const values = results.filter(isSuccess).map((r) => r.data);
 ```

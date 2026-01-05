@@ -1,12 +1,12 @@
 ---
 title: Uso básico
-description: Primeros pasos con run, runAll y createRunner
+description: Primeros pasos con run, runAll y trybox
 ---
 
 ## `run` para una tarea
 
 ```typescript
-import { run } from "runtry";
+import { run } from "trybox";
 
 const r = await run(() => fetch("/api").then((x) => x.json()));
 if (r.ok) console.log(r.data);
@@ -16,7 +16,7 @@ else console.error(r.error.code);
 ## `runAllSettled` para varias tareas
 
 ```typescript
-import { runAllSettled, isSuccess } from "runtry";
+import { runAllSettled, isSuccess } from "trybox";
 
 const tasks = [() => fetch("/a"), () => fetch("/b")];
 const results = await runAllSettled<Response>(tasks, { concurrency: 2 });
@@ -27,8 +27,8 @@ const successes = results.filter(isSuccess).map((r) => r.data);
 ## Reusar un runner
 
 ```typescript
-import { createRunner } from "runtry";
-export const runner = createRunner({ ignoreAbort: true });
+import trybox from "trybox";
+export const runner = trybox({ ignoreAbort: true });
 
 const r = await runner.run(() => fetch("/api"));
 ```

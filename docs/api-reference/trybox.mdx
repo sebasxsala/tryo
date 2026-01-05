@@ -1,5 +1,5 @@
 ---
-title: createRunner
+title: trybox
 description: Instance with error normalization, defaults, and circuit breaker
 ---
 
@@ -23,9 +23,9 @@ Creates a `Runner` instance with methods:
 ## Example
 
 ```typescript
-import { createRunner, errorRule } from "runtry";
+import trybox, { errorRule } from "trybox";
 
-const runner = createRunner({
+const runner = trybox({
   ignoreAbort: true,
   circuitBreaker: { failureThreshold: 3, resetTimeout: 2000, halfOpenRequests: 1 },
   rules: [

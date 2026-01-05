@@ -1,40 +1,41 @@
 ---
 title: "Quickstart"
-description: "Start using Runtry in minutes"
+description: "Start using Trybox in minutes"
 ---
 
 ## Installation
 
-Install Runtry using your favorite package manager:
+Install Trybox using your favorite package manager:
 
 <CodeGroup>
 ```bash npm
-npm install runtry
+npm install trybox
 ```
 
 ```bash pnpm
-pnpm add runtry
+pnpm add trybox
 ```
 
 ```bash yarn
-yarn add runtry
+yarn add trybox
 ```
 
 ```bash bun
-bun add runtry
+bun add trybox
 ```
+
 </CodeGroup>
 
 ## Basic Usage
 
-Runtry provides a simple way to handle async operations safely.
+Trybox provides a simple way to handle async operations safely.
 
 ### Using `run` directly
 
 For simple use cases, you can use the `run` function directly:
 
 ```typescript
-import { run } from "runtry";
+import { run } from "trybox";
 
 const result = await run(
   () => fetch("https://api.example.com/data").then((res) => res.json()),
@@ -51,22 +52,22 @@ if (result.ok) {
 }
 ```
 
-### Using `createRunner`
+### Using `trybox`
 
 For more advanced configurations and reuse, create a `Runner` instance:
 
 ```typescript
-import { createRunner } from "runtry";
+import trybox from "trybox";
 
 // Create a reusable runner with default configuration
-const runner = createRunner({
+const runner = trybox({
   retries: 2,
   timeout: 10000,
   // Global error handling rules
   onError: (error) => {
     // Log to your monitoring service
     console.error("Global error handler:", error);
-  }
+  },
 });
 
 // Use it across your application
@@ -75,11 +76,15 @@ const result = await runner.run(() => complexOperation());
 
 ## Next Steps
 
-Now that you have Runtry installed, explore these key features:
+Now that you have Trybox installed, explore these key features:
 
 <CardGroup cols={2}>
-  <Card title="Error Handling" icon="shield-check" href="/concepts/error-handling">
-    Learn how Runtry normalizes and handles errors.
+  <Card
+    title="Error Handling"
+    icon="shield-check"
+    href="/concepts/error-handling"
+  >
+    Learn how Trybox normalizes and handles errors.
   </Card>
   <Card title="Retry Logic" icon="arrows-rotate" href="/concepts/retry-logic">
     Configure smart retry strategies for your operations.
@@ -88,6 +93,6 @@ Now that you have Runtry installed, explore these key features:
     Run multiple tasks with controlled parallelism.
   </Card>
   <Card title="React Integration" icon="react" href="/examples/react">
-    See how to use Runtry with React hooks.
+    See how to use Trybox with React hooks.
   </Card>
 </CardGroup>

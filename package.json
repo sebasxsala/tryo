@@ -1,6 +1,6 @@
 {
-  "name": "runtry",
-  "version": "0.9.4",
+  "name": "trybox",
+  "version": "0.1.1",
   "description": "Run sync/async functions and return a typed Result instead of throwing.",
   "type": "module",
   "sideEffects": false,
@@ -36,8 +36,8 @@
     "typescript": "^5.0.0"
   },
   "license": "MIT",
-  "homepage": "https://runtry-docs.pages.dev/",
-  "bugs": "https://github.com/sebasxsala/runtry/issues",
+  "homepage": "https://trybox-docs.pages.dev/",
+  "bugs": "https://github.com/sebasxsala/trybox/issues",
   "author": {
     "name": "sebasxsala",
     "url": "https://github.com/sebasxsala"

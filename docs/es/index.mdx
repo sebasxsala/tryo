@@ -1,43 +1,23 @@
 ---
 title: Introducción
-description: 'Manejo de errores tipado para TypeScript con lógica de reintentos y control de concurrencia'
+description: "Manejo de errores tipado para TypeScript con lógica de reintentos y control de concurrencia"
 ---
 
-<img
-  className="block dark:hidden"
-  src="/logo/light.svg"
-  alt="Logo Light"
-/>
-<img
-  className="hidden dark:block"
-  src="/logo/dark.svg"
-  alt="Logo Dark"
-/>
+<img className="block dark:hidden" src="/logo/light.svg" alt="Logo Light" />
+<img className="hidden dark:block" src="/logo/dark.svg" alt="Logo Dark" />
 
-## Bienvenido a Runtry
+## Bienvenido a Trybox
 
 Una librería moderna y tipada para el manejo de errores que hace que las operaciones asíncronas sean predecibles y resilientes.
 
 <CardGroup cols={2}>
-  <Card
-    title="Inicio Rápido"
-    icon="rocket"
-    href="/es/quickstart"
-  >
+  <Card title="Inicio Rápido" icon="rocket" href="/es/quickstart">
     Empieza en menos de 5 minutos
   </Card>
-  <Card
-    title="Referencia de API"
-    icon="code"
-    href="/es/api-reference/create-runner"
-  >
+  <Card title="Referencia de API" icon="code" href="/es/api-reference/trybox">
     Explora la documentación completa de la API
   </Card>
-  <Card
-    title="Ejemplos"
-    icon="lightbulb"
-    href="/es/examples/react"
-  >
+  <Card title="Ejemplos" icon="lightbulb" href="/es/examples/react">
     Ejemplos y patrones del mundo real
   </Card>
   <Card
@@ -99,15 +79,15 @@ Una librería moderna y tipada para el manejo de errores que hace que las operac
 <CodeGroup>
 
 ```bash npm
-npm install runtry
+npm install trybox
 ```
 
 ```bash pnpm
-pnpm add runtry
+pnpm add trybox
 ```
 
 ```bash yarn
-yarn add runtry
+yarn add trybox
 ```
 
 </CodeGroup>
@@ -115,18 +95,15 @@ yarn add runtry
 ## Ejemplo Rápido
 
 ```typescript
-import { createRunner } from 'runtry';
+import trybox from "trybox";
 
-const runner = createRunner();
+const runner = trybox();
 
-const result = await runner.run(
-  () => fetch('https://api.example.com/users'),
-  {
-    retries: 3,
-    retryDelay: 1000,
-    onError: (error) => console.error(error)
-  }
-);
+const result = await runner.run(() => fetch("https://api.example.com/users"), {
+  retries: 3,
+  retryDelay: 1000,
+  onError: (error) => console.error(error),
+});
 
 if (result.ok) {
   const users = await result.data.json();
@@ -135,7 +112,8 @@ if (result.ok) {
 ```
 
 <Note>
-  **Consejo Pro:** Usa `createRunner()` una vez y reutilízalo en tu aplicación para un manejo de errores consistente.
+  **Consejo Pro:** Usa `trybox()` una vez y reutilízalo en tu aplicación para un
+  manejo de errores consistente.
 </Note>
 
 ## Siguientes Pasos
@@ -148,11 +126,7 @@ if (result.ok) {
   >
     Aprende sobre tipos Result y normalización de errores
   </Card>
-  <Card
-    title="Integración con React"
-    icon="react"
-    href="/es/examples/react"
-  >
+  <Card title="Integración con React" icon="react" href="/es/examples/react">
     Mira cómo usarlo con hooks de React
   </Card>
 </CardGroup>

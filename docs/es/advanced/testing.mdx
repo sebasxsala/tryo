@@ -7,8 +7,8 @@ description: Pruebas unitarias de reintentos, circuit breaker y utilidades
 
 ```ts
 import { describe, it, expect } from "bun:test";
-import { run, createRunner } from "runtry";
-import { computeBackoffDelay } from "runtry/dist/utils";
+import trybox, { run } from "trybox";
+import { computeBackoffDelay } from "trybox/dist/utils";
 
 describe("run: success", () => {
   it("retorna ok con data", async () => {

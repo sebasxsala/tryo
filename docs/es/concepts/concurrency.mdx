@@ -11,7 +11,7 @@ description: Control de concurrencia y modos de ejecución en lotes
 ## `runAllSettled` con límite
 
 ```typescript
-import { runAllSettled } from "runtry";
+import { runAllSettled } from "trybox";
 
 const tasks = Array.from({ length: 10 }, (_, i) => async () => i);
 
@@ -23,7 +23,10 @@ const results = await runAllSettled<number>(tasks, { concurrency: 3 });
 Detiene el inicio de nuevas tareas al primer error.
 
 ```typescript
-const results = await runAllSettled<number>(tasks, { concurrency: 4, mode: "fail-fast" });
+const results = await runAllSettled<number>(tasks, {
+  concurrency: 4,
+  mode: "fail-fast",
+});
 ```
 
 Las tareas no iniciadas quedan en estado `skipped`.
@@ -33,7 +36,7 @@ Las tareas no iniciadas quedan en estado `skipped`.
 Lanza al primer error y respeta `concurrency`.
 
 ```typescript
-import { runAll } from "runtry";
+import { runAll } from "trybox";
 
 const data = await runAll<number>(tasks, { concurrency: 2 });
 ```

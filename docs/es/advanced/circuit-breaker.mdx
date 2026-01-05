@@ -6,10 +6,14 @@ description: Prevención de cascadas de fallos con apertura y half-open
 ## Configuración por instancia
 
 ```typescript
-import { createRunner } from "runtry";
+import trybox from "trybox";
 
-const runner = createRunner({
-  circuitBreaker: { failureThreshold: 2, resetTimeout: 1000, halfOpenRequests: 1 },
+const runner = trybox({
+  circuitBreaker: {
+    failureThreshold: 2,
+    resetTimeout: 1000,
+    halfOpenRequests: 1,
+  },
 });
 ```
 
@@ -22,7 +26,7 @@ const runner = createRunner({
 ## Por llamada
 
 ```typescript
-import { run } from "runtry";
+import { run } from "trybox";
 
 const r = await run(async () => 1, {
   circuitBreaker: { failureThreshold: 3, resetTimeout: 1500 },

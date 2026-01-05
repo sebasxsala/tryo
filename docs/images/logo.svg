@@ -11,6 +11,6 @@
     <path d="M -20 -10 L 0 20 L 20 -10" fill="none" stroke="#0b1220" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
   <text x="80" y="150" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="14" fill="#e5e7eb" text-anchor="middle">
-    runtry
+    trybox
   </text>
 </svg>

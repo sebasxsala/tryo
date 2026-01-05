@@ -3,19 +3,26 @@ title: Next.js
 description: Integration in Next.js routes and components
 ---
 
-## API Route with Runtry
+## API Route with Trybox
 
 ```ts
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { run } from "runtry";
+import { run } from "trybox";
 
 export async function GET(_req: NextRequest) {
-  const r = await run(() => fetch("https://example.com").then((x) => x.text()), {
-    retries: 2,
-    timeout: 1000,
-  });
-  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error.status || 500 });
+  const r = await run(
+    () => fetch("https://example.com").then((x) => x.text()),
+    {
+      retries: 2,
+      timeout: 1000,
+    }
+  );
+  if (!r.ok)
+    return NextResponse.json(
+      { error: r.error },
+      { status: r.error.status || 500 }
+    );
   return NextResponse.json({ data: r.data });
 }
 ```
@@ -23,7 +30,7 @@ export async function GET(_req: NextRequest) {
 ## Server Component with Cancellation
 
 ```tsx
-import { run } from "runtry";
+import { run } from "trybox";
 
 export default async function Page() {
   const r = await run(() => fetch("https://example.com").then((x) => x.json()));

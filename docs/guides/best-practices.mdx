@@ -6,14 +6,14 @@ description: Recommended patterns for retries, cancellation, and observability
 ## Reuse an instance
 
 ```typescript
-import { createRunner } from "runtry";
-export const runner = createRunner({ ignoreAbort: true });
+import trybox from "trybox";
+export const runner = trybox({ ignoreAbort: true });
 ```
 
 ## Centralize `mapError`
 
 ```typescript
-const runner = createRunner({ mapError: (e) => ({ ...e, message: e.message }) });
+const runner = trybox({ mapError: (e) => ({ ...e, message: e.message }) });
 ```
 
 ## Limit retries

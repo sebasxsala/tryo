@@ -6,7 +6,7 @@ description: Generic types, helpers, and rules with type inference
 ## Generics in `run`
 
 ```typescript
-import { run } from "runtry";
+import { run } from "trybox";
 
 type Item = { id: string };
 const r = await run<Item>(() => fetch("/api").then((x) => x.json()));
@@ -15,7 +15,12 @@ const r = await run<Item>(() => fetch("/api").then((x) => x.json()));
 ## Result helpers in `runAllSettled`
 
 ```typescript
-import { runAllSettled, isSuccess, type SuccessResult, type ErrorResult } from "runtry";
+import {
+  runAllSettled,
+  isSuccess,
+  type SuccessResult,
+  type ErrorResult,
+} from "trybox";
 
 const rs = await runAllSettled<number>([async () => 1]);
 const ok: SuccessResult<number>[] = rs.filter(isSuccess);
@@ -25,17 +30,21 @@ const ko: ErrorResult<any>[] = rs.filter((r) => r.status === "error");
 ## Rules and types
 
 ```typescript
-import { createRunner, errorRule } from "runtry";
+import trybox, { errorRule } from "trybox";
 
 type MyError = { code: "HTTP"; message: string; status?: number };
 
-const runner = createRunner({
+const runner = trybox({
   rules: [
-    errorRule.when((e): e is { status: number } => typeof (e as any)?.status === "number").toError<MyError>((e) => ({
-      code: "HTTP",
-      message: "failed",
-      status: (e as any).status,
-    })),
+    errorRule
+      .when(
+        (e): e is { status: number } => typeof (e as any)?.status === "number"
+      )
+      .toError<MyError>((e) => ({
+        code: "HTTP",
+        message: "failed",
+        status: (e as any).status,
+      })),
   ],
 });
 ```

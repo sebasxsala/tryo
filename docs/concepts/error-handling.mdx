@@ -18,7 +18,7 @@ The library normalizes unknown values to an `AppError` with:
 Maps aborts and timeouts, and classifies common network errors.
 
 ```typescript
-import { run } from "runtry";
+import { run } from "trybox";
 
 const r = await run(() => fetch("/api"));
 
@@ -29,18 +29,22 @@ if (!r.ok && r.error.code === "ABORTED") {
 
 ## Custom rules
 
-Use `errorRule` to define specific mappings and `createRunner` to apply them.
+Use `errorRule` to define specific mappings and `trybox` to apply them.
 
 ```typescript
-import { createRunner, errorRule } from "runtry";
+import trybox, { errorRule } from "trybox";
 
 class HttpError extends Error {
-  constructor(public status: number, public url: string, public body?: unknown) {
+  constructor(
+    public status: number,
+    public url: string,
+    public body?: unknown
+  ) {
     super("HTTP error");
   }
 }
 
-const runner = createRunner({
+const runner = trybox({
   rules: [
     errorRule.instance(HttpError).toError((e) => ({
       code: "HTTP",

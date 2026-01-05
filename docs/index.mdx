@@ -1,43 +1,23 @@
 ---
 title: Introduction
-description: 'Type-safe error handling for TypeScript with retry logic and concurrency control'
+description: "Type-safe error handling for TypeScript with retry logic and concurrency control"
 ---
 
-<img
-  className="block dark:hidden"
-  src="/logo/light.svg"
-  alt="Logo Light"
-/>
-<img
-  className="hidden dark:block"
-  src="/logo/dark.svg"
-  alt="Logo Dark"
-/>
+<img className="block dark:hidden" src="/logo/light.svg" alt="Logo Light" />
+<img className="hidden dark:block" src="/logo/dark.svg" alt="Logo Dark" />
 
-## Welcome to Runtry
+## Welcome to Trybox
 
 A modern, type-safe error handling library that makes async operations predictable and resilient.
 
 <CardGroup cols={2}>
-  <Card
-    title="Quick Start"
-    icon="rocket"
-    href="/quickstart"
-  >
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
     Get up and running in less than 5 minutes
   </Card>
-  <Card
-    title="API Reference"
-    icon="code"
-    href="/api-reference/create-runner"
-  >
+  <Card title="API Reference" icon="code" href="/api-reference/trybox">
     Explore the complete API documentation
   </Card>
-  <Card
-    title="Examples"
-    icon="lightbulb"
-    href="/examples/react"
-  >
+  <Card title="Examples" icon="lightbulb" href="/examples/react">
     Real-world examples and patterns
   </Card>
   <Card
@@ -99,15 +79,15 @@ A modern, type-safe error handling library that makes async operations predictab
 <CodeGroup>
 
 ```bash npm
-npm install runtry
+npm install trybox
 ```
 
 ```bash pnpm
-pnpm add runtry
+pnpm add trybox
 ```
 
 ```bash yarn
-yarn add runtry
+yarn add trybox
 ```
 
 </CodeGroup>
@@ -115,18 +95,15 @@ yarn add runtry
 ## Quick Example
 
 ```typescript
-import { createRunner } from 'runtry';
+import trybox from "trybox";
 
-const runner = createRunner();
+const runner = trybox();
 
-const result = await runner.run(
-  () => fetch('https://api.example.com/users'),
-  {
-    retries: 3,
-    retryDelay: 1000,
-    onError: (error) => console.error(error)
-  }
-);
+const result = await runner.run(() => fetch("https://api.example.com/users"), {
+  retries: 3,
+  retryDelay: 1000,
+  onError: (error) => console.error(error),
+});
 
 if (result.ok) {
   const users = await result.data.json();
@@ -135,24 +112,17 @@ if (result.ok) {
 ```
 
 <Note>
-  **Pro tip:** Use `createRunner()` once and reuse it across your app for consistent error handling.
+  **Pro tip:** Use `trybox()` once and reuse it across your app for consistent
+  error handling.
 </Note>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card
-    title="Core Concepts"
-    icon="book"
-    href="/concepts/result-type"
-  >
+  <Card title="Core Concepts" icon="book" href="/concepts/result-type">
     Learn about Result types and error normalization
   </Card>
-  <Card
-    title="React Integration"
-    icon="react"
-    href="/examples/react"
-  >
+  <Card title="React Integration" icon="react" href="/examples/react">
     See how to use it with React hooks
   </Card>
 </CardGroup>

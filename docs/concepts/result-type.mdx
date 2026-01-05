@@ -14,7 +14,7 @@ The library functions return a result that avoids exceptions and facilitates flo
 ## `RunResult` in `run`
 
 ```typescript
-import { run } from "runtry";
+import { run } from "trybox";
 
 type User = { id: string; name: string };
 
@@ -42,7 +42,7 @@ Metrics include:
 ## `RunAllItemResult` in `runAllSettled`
 
 ```typescript
-import { runAllSettled } from "runtry";
+import { runAllSettled } from "trybox";
 
 const tasks = [
   () => fetch("/a").then((r) => r.text()),
@@ -69,7 +69,7 @@ Possible states per item:
 The library exports utilities to discriminate results and improve typing:
 
 ```typescript
-import { isSuccess, type SuccessResult, type ErrorResult } from "runtry";
+import { isSuccess, type SuccessResult, type ErrorResult } from "trybox";
 
 const results = await runAllSettled<number>([
   async () => 1,
@@ -79,5 +79,7 @@ const results = await runAllSettled<number>([
 ]);
 
 const successes: SuccessResult<number>[] = results.filter(isSuccess);
-const failures: ErrorResult<any>[] = results.filter((r) => r.status === "error");
+const failures: ErrorResult<any>[] = results.filter(
+  (r) => r.status === "error"
+);
 ```

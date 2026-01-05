@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { run, createRunner } from "../src/index";
+import trybox, { run } from "../src/index";
 import { computeBackoffDelay } from "../src/utils";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -52,7 +52,7 @@ describe("utils: backoff", () => {
 
 describe("runner: circuit breaker", () => {
   it("opens after threshold and short-circuits", async () => {
-    const runner = createRunner({
+    const runner = trybox({
       circuitBreaker: {
         failureThreshold: 2,
         resetTimeout: 1000,

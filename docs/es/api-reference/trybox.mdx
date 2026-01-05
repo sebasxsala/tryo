@@ -1,5 +1,5 @@
 ---
-title: createRunner
+title: trybox
 description: Instancia con normalización de errores, defaults y circuito
 ---
 
@@ -23,9 +23,9 @@ Crea una instancia `Runner` con métodos:
 ## Ejemplo
 
 ```typescript
-import { createRunner, errorRule } from "runtry";
+import trybox, { errorRule } from "trybox";
 
-const runner = createRunner({
+const runner = trybox({
   ignoreAbort: true,
   circuitBreaker: { failureThreshold: 3, resetTimeout: 2000, halfOpenRequests: 1 },
   rules: [

@@ -6,10 +6,14 @@ description: Defining mapping rules and specific error types
 ## Instance rule
 
 ```typescript
-import { createRunner, errorRule } from "runtry";
+import trybox, { errorRule } from "trybox";
 
 class HttpError extends Error {
-  constructor(public status: number, public url: string, public body?: unknown) {
+  constructor(
+    public status: number,
+    public url: string,
+    public body?: unknown
+  ) {
     super("HTTP error");
   }
 }
@@ -22,7 +26,7 @@ type HttpAppError = {
   cause?: unknown;
 };
 
-const runner = createRunner({
+const runner = trybox({
   rules: [
     errorRule.instance(HttpError).toError<HttpAppError>((e) => ({
       code: "HTTP",
@@ -38,12 +42,14 @@ const runner = createRunner({
 ## Custom predicate
 
 ```typescript
-const runner2 = createRunner({
+const runner2 = trybox({
   rules: [
-    errorRule.when((x): x is { code: string } => typeof (x as any)?.code === "string").toError((e) => ({
-      code: (e as any).code,
-      message: "Mapped",
-    })),
+    errorRule
+      .when((x): x is { code: string } => typeof (x as any)?.code === "string")
+      .toError((e) => ({
+        code: (e as any).code,
+        message: "Mapped",
+      })),
   ],
 });
 ```
