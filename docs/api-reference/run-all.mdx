@@ -1,36 +1,29 @@
 ---
 title: runAll
-description: Executes multiple tasks with concurrency and execution modes
+description: Executes multiple tasks and throws on the first failure
 ---
 
 ## Signature
 
-`runAll<T>(tasks, options?): Promise<RunAllItemResult<T>[]>`
+`runAll<T>(tasks, options?): Promise<T[]>`
 
 ## Options
 
 - Inherits all `run` options
 - `concurrency`: simultaneous limit
-- `mode`: `settle` or `fail-fast`
 
 ## Example
 
 ```typescript
-import { runAll, isSuccess } from "runtry";
+import { runAll } from "runtry";
 
-const tasks = [
-  () => fetch("/a").then((r) => r.text()),
-  () => fetch("/b").then((r) => r.text()),
-];
-
-const results = await runAll<string>(tasks, { concurrency: 2, mode: "settle" });
-
-const ok = results.filter(isSuccess);
-const ko = results.filter((r) => r.status === "error");
+const data = await runAll<string>(
+  [
+    () => fetch("/a").then((r) => r.text()),
+    () => fetch("/b").then((r) => r.text()),
+  ],
+  { concurrency: 2 }
+);
 ```
 
-## Result per Item
-
-- `ok`: `{ status: "ok", ok: true, data, error: null }`
-- `error`: `{ status: "error", ok: false, data: null, error }`
-- `skipped`: tasks not started due to cancellation or fail-fast
+If a task fails, the normalized error is thrown.

@@ -1,7 +1,8 @@
 export { run } from "./runner/run";
+export { runAllSettled, type RunAllItemResult } from "./runner/runAllSettled";
+export type { RunAllOptions, SuccessResult, ErrorResult } from "./runner/runAllSettled";
+export { isSuccess } from "./runner/runAllSettled";
 export { runAll } from "./runner/runAll";
-export type { RunAllOptions, SuccessResult, ErrorResult } from "./runner/runAll";
-export { isSuccess } from "./runner/runAll";
 export type { RunOptions, RunResult, RetryOptions } from "./types";
 export type {
   BackoffStrategy,

@@ -7,12 +7,12 @@ import {
 import { run as baseRun } from "./run";
 import type { MaybePromise, RunOptions, RunResult } from "../types";
 import type { CircuitBreakerOptions } from "../types";
-import { runAllOrThrow as baseRunAllOrThrow } from "./runAllOrThrow";
+import { runAll as baseRunAll } from "./runAll";
 import {
-  runAll as baseRunAll,
+  runAllSettled as baseRunAllSettled,
   type RunAllItemResult,
   type RunAllOptions,
-} from "./runAll";
+} from "./runAllSettled";
 
 export type CreateRunnerOptions<E extends AppError = AppError> = {
   /**
@@ -181,22 +181,22 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
         return r;
       });
     },
-    all<T>(
+    allSettled<T>(
       fns: Array<() => Promise<T>>,
       options: RunAllOptions<T, E> = {}
     ): Promise<RunAllItemResult<T, E>[]> {
-      return baseRunAll(fns, {
+      return baseRunAllSettled(fns, {
         toError,
         ignoreAbort,
         ...options,
         mapError: composeMapError(defaultMapError, options.mapError),
       });
     },
-    allOrThrow<T>(
+    all<T>(
       fns: (() => Promise<T>)[],
       options: RunOptions<T, E> = {}
     ): Promise<T[]> {
-      return baseRunAllOrThrow(fns, {
+      return baseRunAll(fns, {
         toError,
         ignoreAbort,
         ...options,

@@ -13,13 +13,13 @@ if (r.ok) console.log(r.data);
 else console.error(r.error.code);
 ```
 
-## `runAll` para varias tareas
+## `runAllSettled` para varias tareas
 
 ```typescript
-import { runAll, isSuccess } from "runtry";
+import { runAllSettled, isSuccess } from "runtry";
 
 const tasks = [() => fetch("/a"), () => fetch("/b")];
-const results = await runAll<Response>(tasks, { concurrency: 2 });
+const results = await runAllSettled<Response>(tasks, { concurrency: 2 });
 
 const successes = results.filter(isSuccess).map((r) => r.data);
 ```

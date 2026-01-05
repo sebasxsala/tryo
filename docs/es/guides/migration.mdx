@@ -16,11 +16,11 @@ if (r.ok) {
 }
 ```
 
-## De `Promise.all` a `runAll`
+## De `Promise.all` a `runAllSettled`
 
 ```typescript
-import { runAll } from "runtry";
+import { runAllSettled } from "runtry";
 
 const tasks = [() => fetch("/a"), () => fetch("/b")];
-const results = await runAll<Response>(tasks, { concurrency: 2, mode: "settle" });
+const results = await runAllSettled<Response>(tasks, { concurrency: 2, mode: "settle" });
 ```

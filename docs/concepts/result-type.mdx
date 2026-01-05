@@ -8,7 +8,7 @@ description: Discriminated result for success or error operations, with optional
 The library functions return a result that avoids exceptions and facilitates flow control.
 
 - `run` returns an object with `ok: true` and `data`, or `ok: false` and `error`.
-- `runAll` returns an array with results per task: `ok`, `error` or `skipped`.
+- `runAllSettled` returns an array with results per task: `ok`, `error` or `skipped`.
 - Optional metrics help observe attempts, retries, and duration.
 
 ## `RunResult` in `run`
@@ -39,10 +39,10 @@ Metrics include:
 - `totalDuration`
 - `lastError?`
 
-## `RunAllItemResult` in `runAll`
+## `RunAllItemResult` in `runAllSettled`
 
 ```typescript
-import { runAll } from "runtry";
+import { runAllSettled } from "runtry";
 
 const tasks = [
   () => fetch("/a").then((r) => r.text()),
@@ -50,7 +50,7 @@ const tasks = [
   () => fetch("/c").then((r) => r.text()),
 ];
 
-const results = await runAll<string>(tasks);
+const results = await runAllSettled<string>(tasks);
 
 for (const r of results) {
   if (r.status === "ok") console.log(r.data);
@@ -64,14 +64,14 @@ Possible states per item:
 - `error`: failed task with `error`
 - `skipped`: task not executed due to cancellation or fail-fast
 
-## Type helpers for `runAll`
+## Type helpers for `runAllSettled`
 
 The library exports utilities to discriminate results and improve typing:
 
 ```typescript
 import { isSuccess, type SuccessResult, type ErrorResult } from "runtry";
 
-const results = await runAll<number>([
+const results = await runAllSettled<number>([
   async () => 1,
   async () => {
     throw new Error("x");
