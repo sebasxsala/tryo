@@ -1,5 +1,5 @@
-import type { AppError } from "../error/types";
-import { toAppError as defaultToAppError } from "../error/normalize";
+import type { ResultError } from "../error/types";
+import { toResultError as defaultToResultError } from "../error/normalize";
 import type { MaybePromise, RunOptions, RunResult } from "../types";
 import { validateOptions } from "../types";
 import { applyJitter, resolveRetryDelay, sleep } from "../utils";
@@ -7,18 +7,18 @@ import { applyJitter, resolveRetryDelay, sleep } from "../utils";
 /**
  * Executes an async operation and returns a Result instead of throwing.
  *
- * Errors are normalized into an `AppError` (or a custom error type `E`)
+ * Errors are normalized into an `ResultError` (or a custom error type `E`)
  * using the provided `toError` function.
  *
  * This utility is framework-agnostic and works in browsers, Node.js,
  * React effects, and any async context.
  */
-export async function run<T, E extends AppError = AppError>(
+export async function run<T, E extends ResultError = ResultError>(
   fn: () => MaybePromise<T>,
   options: RunOptions<T, E> = {}
 ): Promise<RunResult<T, E>> {
   const {
-    toError = defaultToAppError as unknown as (err: unknown) => E,
+    toError = defaultToResultError as unknown as (err: unknown) => E,
     mapError,
     onError,
     onSuccess,

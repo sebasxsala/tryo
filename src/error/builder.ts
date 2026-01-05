@@ -1,9 +1,9 @@
-import type { AppError, Rule } from "./types";
+import type { ResultError, Rule } from "./types";
 
 class ErrorRuleBuilder<E> {
   constructor(private readonly matcher: (err: unknown) => err is E) {}
 
-  toError<const Out extends AppError>(mapper: (err: E) => Out): Rule<Out> {
+  toError<const Out extends ResultError>(mapper: (err: E) => Out): Rule<Out> {
     return (err: unknown) => {
       if (!this.matcher(err)) return null;
       return mapper(err);

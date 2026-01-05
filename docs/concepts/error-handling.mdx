@@ -1,11 +1,11 @@
 ---
 title: Error Handling
-description: Error normalization to AppError and customizable rules
+description: Error normalization to ResultError and customizable rules
 ---
 
-## AppError
+## ResultError
 
-The library normalizes unknown values to an `AppError` with:
+The library normalizes unknown values to a `ResultError` with:
 
 - `code`: stable identifier
 - `message`: error description
@@ -15,15 +15,28 @@ The library normalizes unknown values to an `AppError` with:
 
 ## Default normalizer
 
-Maps aborts and timeouts, and classifies common network errors.
+If no custom rules are provided, `trybox` automatically applies the following rules:
+
+- **abort**: Detects `AbortError` and returns `code: "ABORTED"`.
+- **timeout**: Detects `TimeoutError` and returns `code: "TIMEOUT"`.
+- **httpStatus**: Detects errors with numeric `status` or `statusCode`. Returns `code: "HTTP"` and preserves the status.
+- **aggregate**: Handles `AggregateError` by saving internal errors in `meta.errors`.
+- **string**: If a string is thrown, it is used as the message.
+- **message**: Extracts the `message` property from objects.
+
+Example using default rules:
 
 ```typescript
-import { run } from "trybox";
+import trybox from "trybox";
 
-const r = await run(() => fetch("/api"));
+const runner = trybox(); // Uses default rules
 
-if (!r.ok && r.error.code === "ABORTED") {
-  console.log("Cancelled");
+const result = await runner.run(async () => {
+  throw new DOMException("Time out", "TimeoutError");
+});
+
+if (!result.ok && result.error.code === "TIMEOUT") {
+  console.log("Request timed out");
 }
 ```
 

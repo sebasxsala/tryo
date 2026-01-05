@@ -1,4 +1,4 @@
-export type AppErrorCode =
+export type ResultErrorCode =
   | "ABORTED"
   | "NETWORK"
   | "TIMEOUT"
@@ -15,8 +15,8 @@ export type AppErrorCode =
  * - `meta`: Optional payload with extra context (response body, validation fields, etc.).
  * - `cause`: The original thrown value for debugging.
  */
-export type AppError<
-  Code extends string = AppErrorCode | (string & {}),
+export type ResultError<
+  Code extends string = ResultErrorCode | (string & {}),
   Meta = unknown
 > = {
   code: Code; // allows custom codes without losing autocomplete
@@ -32,6 +32,8 @@ type RuleReturn<R> = R extends (err: unknown) => infer Out
   : never;
 export type InferErrorFromRules<TRules extends readonly Rule<any>[]> =
   TRules extends readonly []
-    ? AppError
-    : RuleReturn<TRules[number]> | AppError<"UNKNOWN">;
-export type Rule<E extends AppError = AppError> = (err: unknown) => E | null;
+    ? ResultError
+    : RuleReturn<TRules[number]> | ResultError<"UNKNOWN">;
+export type Rule<E extends ResultError = ResultError> = (
+  err: unknown
+) => E | null;

@@ -1,6 +1,6 @@
-import type { AppError, Rule } from "./types";
+import type { ResultError, Rule } from "./types";
 
-export const abort: Rule<AppError<"ABORTED">> = (err) => {
+export const abort: Rule<ResultError<"ABORTED">> = (err) => {
   if (err instanceof DOMException && err.name === "AbortError") {
     return { code: "ABORTED", message: "Request cancelled", cause: err };
   }
@@ -14,7 +14,7 @@ export const abort: Rule<AppError<"ABORTED">> = (err) => {
   return null;
 };
 
-export const timeout: Rule<AppError<"TIMEOUT">> = (err) => {
+export const timeout: Rule<ResultError<"TIMEOUT">> = (err) => {
   if (err instanceof DOMException && err.name === "TimeoutError") {
     return { code: "TIMEOUT", message: "Request timed out", cause: err };
   }
@@ -28,14 +28,17 @@ export const timeout: Rule<AppError<"TIMEOUT">> = (err) => {
   return null;
 };
 
-export const httpStatus: Rule<AppError<"HTTP">> = (err) => {
+export const httpStatus: Rule<ResultError<"HTTP">> = (err) => {
   if (typeof err === "object" && err !== null) {
     const obj = err as Record<string, unknown>;
     const status = obj.status ?? obj.statusCode;
     if (typeof status === "number") {
       return {
         code: "HTTP",
-        message: typeof obj.message === "string" ? obj.message : `HTTP Error ${status}`,
+        message:
+          typeof obj.message === "string"
+            ? obj.message
+            : `HTTP Error ${status}`,
         status,
         cause: err,
       };
@@ -44,7 +47,7 @@ export const httpStatus: Rule<AppError<"HTTP">> = (err) => {
   return null;
 };
 
-export const aggregate: Rule<AppError<"UNKNOWN", { errors: unknown[] }>> = (
+export const aggregate: Rule<ResultError<"UNKNOWN", { errors: unknown[] }>> = (
   err
 ) => {
   if (typeof AggregateError !== "undefined" && err instanceof AggregateError) {
@@ -58,21 +61,25 @@ export const aggregate: Rule<AppError<"UNKNOWN", { errors: unknown[] }>> = (
   return null;
 };
 
-export const string: Rule<AppError<"UNKNOWN">> = (err) => {
+export const string: Rule<ResultError<"UNKNOWN">> = (err) => {
   if (typeof err === "string") {
     return { code: "UNKNOWN", message: err, cause: err };
   }
   return null;
 };
 
-export const message: Rule<AppError<"UNKNOWN">> = (err) => {
+export const message: Rule<ResultError<"UNKNOWN">> = (err) => {
   if (
     typeof err === "object" &&
     err !== null &&
     "message" in err &&
     typeof (err as { message: unknown }).message === "string"
   ) {
-    return { code: "UNKNOWN", message: (err as { message: string }).message, cause: err };
+    return {
+      code: "UNKNOWN",
+      message: (err as { message: string }).message,
+      cause: err,
+    };
   }
   return null;
 };
@@ -84,4 +91,4 @@ export const rules = {
   aggregate,
   string,
   message,
-} satisfies Record<string, Rule<AppError>>;
+} satisfies Record<string, Rule<ResultError>>;

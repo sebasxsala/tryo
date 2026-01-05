@@ -1,4 +1,4 @@
-import type { AppError } from "./error/types";
+import type { ResultError } from "./error/types";
 
 export type RetryDelayFn<E> = (attempt: number, err: E) => number;
 
@@ -25,7 +25,7 @@ export type BackoffStrategy =
 /**
  * Retry options for `run`, `runAll` and `runAllOrThrow`.
  */
-export type RetryOptions<E extends AppError = AppError> = {
+export type RetryOptions<E extends ResultError = ResultError> = {
   /**
    * Number of retries to perform (does not include the initial attempt).
    * @default 0
@@ -84,7 +84,10 @@ export type RetryContext = {
 /**
  * Main options for `run` and extended to `runAll`/`runAllOrThrow`.
  */
-export type RunOptions<T, E extends AppError = AppError> = RetryOptions<E> & {
+export type RunOptions<
+  T,
+  E extends ResultError = ResultError
+> = RetryOptions<E> & {
   /**
    * Normalizes an unknown error value to your type `E`.
    * If not provided, a default normalizer is used.
@@ -163,17 +166,17 @@ export type Metrics = {
   totalAttempts: number;
   totalRetries: number;
   totalDuration: number;
-  lastError?: AppError;
+  lastError?: ResultError;
 };
 
-export type RunResult<T, E extends AppError = AppError> =
+export type RunResult<T, E extends ResultError = ResultError> =
   | { ok: true; data: T; error: null; metrics?: Metrics }
   | { ok: false; data: null; error: E; metrics?: Metrics };
 
 /**
  * Validates common execution/retry options.
  */
-export function validateOptions<T, E extends AppError = AppError>(
+export function validateOptions<T, E extends ResultError = ResultError>(
   options: RunOptions<T, E>
 ): void {
   if (options.retries != null && options.retries < 0) {

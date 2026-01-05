@@ -1,5 +1,5 @@
 import { run } from "./run";
-import type { AppError } from "../error/types";
+import type { ResultError } from "../error/types";
 import type { MaybePromise, RunOptions, RunResult } from "../types";
 import { validateOptions } from "../types";
 
@@ -9,7 +9,7 @@ import { validateOptions } from "../types";
  * - "error": failed task with `error`
  * - "skipped": task not executed due to cancellation/fail-fast/concurrency
  */
-export type RunAllItemResult<T, E extends AppError = AppError> =
+export type RunAllItemResult<T, E extends ResultError = ResultError> =
   | { status: "ok"; ok: true; data: T; error: null }
   | { status: "error"; ok: false; data: null; error: E }
   | { status: "skipped"; ok: false; data: null; error: null };
@@ -21,16 +21,16 @@ export type SuccessResult<T> = Extract<
 >;
 /** Helper to discriminate error results. */
 export type ErrorResult<E> = Extract<
-  RunAllItemResult<any, E extends AppError ? E : AppError>,
+  RunAllItemResult<any, E extends ResultError ? E : ResultError>,
   { status: "error" }
 >;
 
 /** Type guard that detects `status: "ok"` with `data` typing. */
-export const isSuccess = <T, E extends AppError = AppError>(
+export const isSuccess = <T, E extends ResultError = ResultError>(
   r: RunAllItemResult<T, E>
 ): r is SuccessResult<T> => r.status === "ok";
 
-export type RunAllOptions<T, E extends AppError = AppError> = RunOptions<
+export type RunAllOptions<T, E extends ResultError = ResultError> = RunOptions<
   T,
   E
 > & {
@@ -49,7 +49,7 @@ export type RunAllOptions<T, E extends AppError = AppError> = RunOptions<
   mode?: "settle" | "fail-fast";
 };
 
-export async function runAllSettled<T, E extends AppError = AppError>(
+export async function runAllSettled<T, E extends ResultError = ResultError>(
   tasks: Array<() => MaybePromise<T>>,
   options: RunAllOptions<T, E> = {}
 ): Promise<RunAllItemResult<T, E>[]> {

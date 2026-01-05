@@ -1,58 +1,154 @@
-````
+# trybox
 
----
+Run sync/async functions and return a typed Result instead of throwing. `trybox` provides powerful error normalization, retry logic, and concurrency control.
+
+## Installation
+
+```bash
+npm install trybox
+# or
+bun add trybox
+```
+
+## Basic Usage
+
+```typescript
+import trybox from "trybox";
+
+const runner = trybox();
+
+const result = await runner.run(async () => {
+  const res = await fetch("/api/data");
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+});
+
+if (result.ok) {
+  console.log(result.data);
+} else {
+  console.error(result.error.message);
+}
+```
+
+## Error Handling
+
+`trybox` normalizes all errors into a `ResultError` object with a stable `code`.
+
+### The `ResultError` Object
+
+All errors are normalized to this structure:
+
+```typescript
+type ResultError<Code extends string = string> = {
+  code: Code; // Stable error code (e.g. "TIMEOUT", "HTTP")
+  message: string; // Human-readable message
+  cause?: unknown; // Original error
+  meta?: Record<string, any>; // Extra metadata (e.g. status code, validation errors)
+  status?: number; // Optional HTTP status (if applicable)
+};
+```
+
+### Default Rules
+
+If no custom rules are provided, `trybox` applies these default rules:
+
+- **ABORTED**: Detects `AbortError` (e.g., from `AbortController`).
+- **TIMEOUT**: Detects `TimeoutError`.
+- **HTTP**: Detects objects with `status` or `statusCode` (number).
+- **UNKNOWN**: Fallback for other errors (strings, generic errors).
+
+```typescript
+const result = await runner.run(fetchData);
+
+if (!result.ok) {
+  switch (result.error.code) {
+    case "ABORTED":
+      // Handle cancellation
+      break;
+    case "TIMEOUT":
+      // Handle timeout
+      break;
+    case "HTTP":
+      console.log("Status:", result.error.status);
+      break;
+  }
+}
+```
+
+### Custom Rules
+
+You can define custom error rules to map specific exceptions to typed error codes.
+
+```typescript
+import trybox, { errorRule } from "trybox";
+
+const runner = trybox({
+  rules: [
+    // Map specific error string to a code
+    errorRule
+      .when((e) => e === "foo")
+      .toError(() => ({
+        code: "CUSTOM_FOO",
+        message: "Foo happened",
+      })),
+    // Map class instance
+    errorRule.instance(MyCustomError).toError((e) => ({
+      code: "MY_ERROR",
+      message: e.message,
+      meta: { details: e.details },
+    })),
+  ],
+});
+```
 
 ## API
 
-### `run(fn, options?)`
+### `runner.run(fn, options?)`
 
-Executes a single async function.
+Executes a single function with retry and error handling.
 
-```ts
+```typescript
 await runner.run(fn, {
   retries: 3,
   retryDelay: (attempt) => attempt * 1000,
-  onError: (err) => toast.error(err.message),
-  onSuccess: (data) => console.log(data),
+  onSuccess: (data) => console.log("Success:", data),
+  onError: (err) => console.error("Error:", err),
 });
-````
+```
 
-### `runAllSettled(tasks, options?)`
+### `runner.allSettled(tasks, options?)`
 
-Executes multiple tasks with concurrency control. Returns a discriminated union for each result.
+Executes multiple tasks with concurrency control. Returns all results (success or failure).
 
-```ts
+```typescript
 const tasks = [
   () => fetch("/api/1"),
   () => fetch("/api/2"),
   () => fetch("/api/3"),
 ];
 
-// Run max 2 at a time, settle all results
 const results = await runner.allSettled(tasks, {
   concurrency: 2,
-  mode: "settle", // "fail-fast" is also supported
+  mode: "settle", // or "fail-fast"
 });
 ```
 
-### `runAll(tasks, options?)`
+### `runner.all(tasks, options?)`
 
-Like `Promise.all` but with concurrency control and retries. Throws the first error (normalized).
+Like `Promise.all` but with concurrency control. Throws the first normalized error if any fails.
 
-```ts
+```typescript
 try {
   const data = await runner.all(tasks, { concurrency: 5 });
 } catch (err) {
-  // err is your typed AppError
+  // err is ResultError
   console.error(err.code);
 }
 ```
 
----
-
 ## React Example
 
-```ts
+```typescript
 useEffect(() => {
   let cancelled = false;
 

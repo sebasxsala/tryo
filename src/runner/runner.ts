@@ -1,25 +1,35 @@
-import type { AppError, Rule, InferErrorFromRules } from "../error/types";
+import type { ResultError, Rule, InferErrorFromRules } from "../error/types";
+import { rules as defaultRules } from "../error/core";
 import {
   createNormalizer,
   defaultFallback,
-  toAppError,
+  toResultError,
 } from "../error/normalize";
 import { run as baseRun } from "./run";
 import type { MaybePromise, RunOptions, RunResult } from "../types";
 import type { CircuitBreakerOptions } from "../types";
-import { runAll as baseRunAll } from "./runAll";
+import { runAll as baseRunAll, type RunAllOrThrowOptions } from "./runAll";
 import {
   runAllSettled as baseRunAllSettled,
   type RunAllItemResult,
   type RunAllOptions,
 } from "./runAllSettled";
 
-export type CreateRunnerOptions<E extends AppError = AppError> = {
+export type RulesMode = "extend" | "replace";
+
+export type CreateRunnerOptions<E extends ResultError = ResultError> = {
   /**
    * Custom matchers to use for normalizing errors.
    * If not provided, the default matchers are used.
    */
   rules?: Rule<E>[];
+
+  /**
+   * How to treat provided rules in relation to default rules.
+   * - "extend": Use default rules after custom rules (default).
+   * - "replace": Use only custom rules (and fallback).
+   */
+  rulesMode?: RulesMode;
 
   /**
    * Custom fallback function to use for normalizing errors.
@@ -50,24 +60,24 @@ const composeMapError =
   (e: E) =>
     local ? local(base ? base(e) : e) : base ? base(e) : e;
 
-export interface Runner<E extends AppError> {
+export interface Runner<E extends ResultError> {
   run<T>(
     fn: () => Promise<T>,
     options?: RunOptions<T, E>
   ): Promise<RunResult<T, E>>;
-  all<T>(
+  allSettled<T>(
     fns: Array<() => MaybePromise<T>>,
     options?: RunAllOptions<T, E>
   ): Promise<RunAllItemResult<T, E>[]>;
-  allOrThrow<T>(
+  all<T>(
     fns: Array<() => MaybePromise<T>>,
     options?: RunOptions<T, E>
   ): Promise<T[]>;
 }
 
 export function createRunner(
-  opts?: Omit<CreateRunnerOptions<AppError>, "rules">
-): Runner<AppError>;
+  opts?: Omit<CreateRunnerOptions<ResultError>, "rules">
+): Runner<ResultError>;
 
 export function createRunner<const TRules extends readonly Rule<any>[]>(
   opts: { rules: TRules } & Omit<
@@ -83,6 +93,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
 
   const {
     rules = [],
+    rulesMode = "extend",
     fallback = (e: unknown) => defaultFallback(e) as unknown as E,
     toError: customToError,
     ignoreAbort = true,
@@ -90,11 +101,29 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
     circuitBreaker: defaultCircuitBreaker,
   } = opts as CreateRunnerOptions<E>;
 
+  let effectiveRules: Rule<E>[] = [];
+  const defaultRulesList = Object.values(defaultRules) as unknown as Rule<E>[];
+
+  if (rules.length > 0) {
+    if (rulesMode === "extend") {
+      effectiveRules = [...rules, ...defaultRulesList];
+    } else {
+      effectiveRules = [...rules];
+    }
+  } else {
+    // If no custom rules, and extend -> use default rules
+    if (rulesMode === "extend") {
+      effectiveRules = defaultRulesList;
+    } else {
+      effectiveRules = [];
+    }
+  }
+
   const toError =
     customToError ??
-    (rules.length > 0
-      ? createNormalizer<E>(rules as unknown as Rule<E>[], fallback)
-      : (toAppError as unknown as (e: unknown) => E));
+    (effectiveRules.length > 0
+      ? createNormalizer<E>(effectiveRules, fallback)
+      : (toResultError as unknown as (e: unknown) => E));
 
   let failureCount = 0;
   let openUntil: number | null = null;
@@ -194,7 +223,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
     },
     all<T>(
       fns: (() => Promise<T>)[],
-      options: RunOptions<T, E> = {}
+      options: RunAllOrThrowOptions<T, E> = {}
     ): Promise<T[]> {
       return baseRunAll(fns, {
         toError,

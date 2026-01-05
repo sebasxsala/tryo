@@ -1,11 +1,11 @@
 ---
 title: Error Handling
-description: Normalización de errores a AppError y reglas personalizables
+description: Normalización de errores a ResultError y reglas personalizables
 ---
 
-## AppError
+## AppResultErrorError
 
-La librería normaliza valores desconocidos a un `AppError` con:
+La librería normaliza valores desconocidos a un `ResultError` con:
 
 - `code`: identificador estable
 - `message`: descripción del error
@@ -15,15 +15,28 @@ La librería normaliza valores desconocidos a un `AppError` con:
 
 ## Normalizador por defecto
 
-Mapea abortos y timeout, y clasifica errores comunes de red.
+Si no configuras reglas personalizadas, `trybox` aplica automáticamente las siguientes reglas:
+
+- **abort**: Detecta `AbortError` y devuelve `code: "ABORTED"`.
+- **timeout**: Detecta `TimeoutError` y devuelve `code: "TIMEOUT"`.
+- **httpStatus**: Detecta errores con `status` o `statusCode` numérico. Devuelve `code: "HTTP"` y preserva el status.
+- **aggregate**: Maneja `AggregateError` guardando los errores internos en `meta.errors`.
+- **string**: Si se lanza un string, se usa como mensaje.
+- **message**: Extrae la propiedad `message` de objetos.
+
+Ejemplo de uso de reglas por defecto:
 
 ```typescript
-import { run } from "trybox";
+import trybox from "trybox";
 
-const r = await run(() => fetch("/api"));
+const runner = trybox(); // Usa reglas por defecto
 
-if (!r.ok && r.error.code === "ABORTED") {
-  console.log("Cancelado");
+const result = await runner.run(async () => {
+  throw new DOMException("Time out", "TimeoutError");
+});
+
+if (!result.ok && result.error.code === "TIMEOUT") {
+  console.log("La petición excedió el tiempo límite");
 }
 ```
 

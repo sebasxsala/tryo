@@ -15,9 +15,9 @@ export type {
   RetryContext,
 } from "./types";
 
-export type { AppError, AppErrorCode } from "./error/types";
+export type { ResultError, ResultErrorCode } from "./error/types";
 export {
-  toAppError,
+  toResultError,
   defaultFallback,
   createNormalizer,
 } from "./error/normalize";
@@ -25,12 +25,21 @@ export { rules } from "./error/core";
 
 export { errorRule } from "./error/builder";
 
-import type { AppError } from "./error/types";
+import type { ResultError, Rule, InferErrorFromRules } from "./error/types";
 import { createRunner } from "./runner/runner";
 import type { CreateRunnerOptions, Runner } from "./runner/runner";
 
 export default function trybox(
-  options?: CreateRunnerOptions
-): Runner<AppError> {
+  options?: Omit<CreateRunnerOptions<ResultError>, "rules">
+): Runner<ResultError>;
+
+export default function trybox<const TRules extends readonly Rule<any>[]>(
+  options: { rules: TRules } & Omit<
+    CreateRunnerOptions<InferErrorFromRules<TRules>>,
+    "rules"
+  >
+): Runner<InferErrorFromRules<TRules>>;
+
+export default function trybox(options: any = {}): any {
   return createRunner(options);
 }

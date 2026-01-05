@@ -1,5 +1,5 @@
 import { run } from "./run";
-import type { AppError } from "../error/types";
+import type { ResultError } from "../error/types";
 import type { RunOptions } from "../types";
 import { validateOptions } from "../types";
 import type { MaybePromise } from "bun";
@@ -9,10 +9,10 @@ import type { MaybePromise } from "bun";
  * - Inherits all options from `RunOptions`
  * - `concurrency`: limit of simultaneous tasks; if one fails, it throws
  */
-export type RunAllOrThrowOptions<T, E extends AppError = AppError> = RunOptions<
+export type RunAllOrThrowOptions<
   T,
-  E
-> & {
+  E extends ResultError = ResultError
+> = RunOptions<T, E> & {
   /**
    * Maximum number of concurrent tasks to run.
    * @default Infinity
@@ -20,7 +20,7 @@ export type RunAllOrThrowOptions<T, E extends AppError = AppError> = RunOptions<
   concurrency?: number;
 };
 
-export async function runAll<T, E extends AppError = AppError>(
+export async function runAll<T, E extends ResultError = ResultError>(
   tasks: Array<() => MaybePromise<T>>,
   options: RunAllOrThrowOptions<T, E> = {}
 ): Promise<T[]> {

@@ -1,6 +1,6 @@
-import type { AppError, Rule } from "./types";
+import type { ResultError, Rule } from "./types";
 
-export function createNormalizer<E extends AppError>(
+export function createNormalizer<E extends ResultError>(
   rules: Rule<E>[],
   fallback: (err: unknown) => E
 ) {
@@ -14,7 +14,7 @@ export function createNormalizer<E extends AppError>(
 }
 
 // General fallback (without depending on fetch / http)
-export function defaultFallback(err: unknown): AppError {
+export function defaultFallback(err: unknown): ResultError {
   if (err instanceof Error) {
     // In browsers, network errors sometimes fall as TypeError (fetch),
     // but this is not 100% universal; we treat it as best-effort.
@@ -25,7 +25,7 @@ export function defaultFallback(err: unknown): AppError {
 }
 
 // "default" normalizer that includes abort rule (very useful in UI)
-export function toAppError(err: unknown): AppError {
+export function toResultError(err: unknown): ResultError {
   // AbortError (browser / fetch / AbortController)
   if (err instanceof DOMException && err.name === "AbortError") {
     return { code: "ABORTED", message: "Request cancelled", cause: err };
