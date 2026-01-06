@@ -58,7 +58,7 @@ describe("Type inference", () => {
     }
   });
 
-  it("infers types in runAllSettled", async () => {
+  it("infers types in runAll", async () => {
     const runner = trybox({
       rules: [
         errorRule
@@ -71,7 +71,7 @@ describe("Type inference", () => {
       ],
     });
 
-    const results = await runner.allSettled([
+    const results = await runner.all([
       async () => {
         throw "foo";
       },

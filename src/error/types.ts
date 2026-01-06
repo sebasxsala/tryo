@@ -4,6 +4,7 @@ export type ResultErrorCode =
   | "TIMEOUT"
   | "VALIDATION"
   | "HTTP"
+  | "CIRCUIT_OPEN"
   | "UNKNOWN";
 
 /**

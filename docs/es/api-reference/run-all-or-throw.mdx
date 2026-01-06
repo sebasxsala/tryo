@@ -1,0 +1,29 @@
+---
+title: runAllOrThrow
+description: Ejecuta múltiples tareas y lanza al primer fallo
+---
+
+## Firma
+
+`runAllOrThrow<T>(tasks, options?): Promise<T[]>`
+
+## Opciones
+
+- Hereda todas las opciones de `run`
+- `concurrency`: límite simultáneo
+
+## Ejemplo
+
+```typescript
+import { runAllOrThrow } from "trybox";
+
+const data = await runAllOrThrow<string>(
+  [
+    () => fetch("/a").then((r) => r.text()),
+    () => fetch("/b").then((r) => r.text()),
+  ],
+  { concurrency: 2 }
+);
+```
+
+Si una tarea falla, se lanza el error normalizado.

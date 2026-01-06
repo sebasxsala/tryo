@@ -1,9 +1,9 @@
 import { describe, test, expect } from "bun:test";
-import { runAllSettled } from "../src";
+import { runAll } from "../src";
 import { sleep } from "../src/utils";
 
 describe("Concurrency", () => {
-  test("runAllSettled respects concurrency limit", async () => {
+  test("runAll respects concurrency limit", async () => {
     const start = Date.now();
     let active = 0;
     let maxActive = 0;
@@ -16,7 +16,7 @@ describe("Concurrency", () => {
       return i;
     });
 
-    const results = await runAllSettled(tasks, { concurrency: 2 });
+    const results = await runAll(tasks, { concurrency: 2 });
 
     const duration = Date.now() - start;
 
@@ -33,14 +33,14 @@ describe("Concurrency", () => {
     expect(results.every((r) => r.ok)).toBe(true);
   });
 
-  test("runAllSettled defaults to unbounded concurrency (Promise.all behavior)", async () => {
+  test("runAll defaults to unbounded concurrency (Promise.all behavior)", async () => {
     const start = Date.now();
     const tasks = Array.from({ length: 10 }, (_, i) => async () => {
       await sleep(50);
       return i;
     });
 
-    await runAllSettled(tasks); // No concurrency option
+    await runAll(tasks); // No concurrency option
     const duration = Date.now() - start;
 
     // Should take roughly 50ms (plus overhead)

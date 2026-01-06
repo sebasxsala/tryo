@@ -1,29 +1,36 @@
 ---
 title: runAll
-description: Ejecuta múltiples tareas y lanza al primer fallo
+description: Ejecuta múltiples tareas con concurrencia y modos de ejecución
 ---
 
 ## Firma
 
-`runAll<T>(tasks, options?): Promise<T[]>`
+`runAll<T>(tasks, options?): Promise<RunAllItemResult<T>[]>`
 
 ## Opciones
 
 - Hereda todas las opciones de `run`
 - `concurrency`: límite simultáneo
+- `mode`: `settle` o `fail-fast`
 
 ## Ejemplo
 
 ```typescript
-import { runAll } from "trybox";
+import { runAll, isSuccess } from "trybox";
 
-const data = await runAll<string>(
-  [
-    () => fetch("/a").then((r) => r.text()),
-    () => fetch("/b").then((r) => r.text()),
-  ],
-  { concurrency: 2 }
-);
+const tasks = [
+  () => fetch("/a").then((r) => r.text()),
+  () => fetch("/b").then((r) => r.text()),
+];
+
+const results = await runAll<string>(tasks, { concurrency: 2, mode: "settle" });
+
+const ok = results.filter(isSuccess);
+const ko = results.filter((r) => r.status === "error");
 ```
 
-Si una tarea falla, se lanza el error normalizado.
+## Resultado por ítem
+
+- `ok`: `{ status: "ok", ok: true, data, error: null }`
+- `error`: `{ status: "error", ok: false, data: null, error }`
+- `skipped`: tareas no iniciadas por cancelación o fail-fast

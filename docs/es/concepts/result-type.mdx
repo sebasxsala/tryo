@@ -8,7 +8,7 @@ description: Resultado discriminado para operaciones con éxito o error, con mé
 Las funciones de la librería devuelven un resultado que evita excepciones y facilita el control de flujo.
 
 - `run` devuelve un objeto con `ok: true` y `data`, o `ok: false` y `error`.
-- `runAllSettled` devuelve un array con resultados por tarea: `ok`, `error` o `skipped`.
+- `runAll` devuelve un array con resultados por tarea: `ok`, `error` o `skipped`.
 - Las métricas opcionales ayudan a observar intentos, reintentos y duración.
 
 ## `RunResult` en `run`
@@ -39,10 +39,10 @@ Las métricas incluyen:
 - `totalDuration`
 - `lastError?`
 
-## `RunAllItemResult` en `runAllSettled`
+## `RunAllItemResult` en `runAll`
 
 ```typescript
-import { runAllSettled } from "trybox";
+import { runAll } from "trybox";
 
 const tasks = [
   () => fetch("/a").then((r) => r.text()),
@@ -50,7 +50,7 @@ const tasks = [
   () => fetch("/c").then((r) => r.text()),
 ];
 
-const results = await runAllSettled<string>(tasks);
+const results = await runAll<string>(tasks);
 
 for (const r of results) {
   if (r.status === "ok") console.log(r.data);
@@ -64,14 +64,14 @@ Estados posibles por ítem:
 - `error`: tarea fallida con `error`
 - `skipped`: tarea no ejecutada por cancelación o fail-fast
 
-## Helpers de tipo para `runAllSettled`
+## Helpers de tipo para `runAll`
 
 La librería exporta utilidades para discriminar resultados y mejorar el tipado:
 
 ```typescript
 import { isSuccess, type SuccessResult, type ErrorResult } from "trybox";
 
-const results = await runAllSettled<number>([
+const results = await runAll<number>([
   async () => 1,
   async () => {
     throw new Error("x");

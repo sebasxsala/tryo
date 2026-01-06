@@ -1,5 +1,10 @@
 import type { ResultError, Rule, InferErrorFromRules } from "../error/types";
-import { rules as defaultRules } from "../error/core";
+import {
+  rules as defaultRulesObj,
+  defaultRules,
+  getDefaultRules,
+  CircuitOpenError,
+} from "../error/core";
 import {
   createNormalizer,
   defaultFallback,
@@ -8,12 +13,15 @@ import {
 import { run as baseRun } from "./run";
 import type { MaybePromise, RunOptions, RunResult } from "../types";
 import type { CircuitBreakerOptions } from "../types";
-import { runAll as baseRunAll, type RunAllOrThrowOptions } from "./runAll";
 import {
-  runAllSettled as baseRunAllSettled,
+  runAllOrThrow as baseRunAllOrThrow,
+  type RunAllOrThrowOptions,
+} from "./runAllOrThrow";
+import {
+  runAll as baseRunAll,
   type RunAllItemResult,
   type RunAllOptions,
-} from "./runAllSettled";
+} from "./runAll";
 
 export type RulesMode = "extend" | "replace";
 
@@ -64,13 +72,13 @@ export interface Runner<E extends ResultError> {
     fn: () => Promise<T>,
     options?: RunOptions<T, E>
   ): Promise<RunResult<T, E>>;
-  allSettled<T>(
+  all<T>(
     fns: Array<() => MaybePromise<T>>,
     options?: RunAllOptions<T, E>
   ): Promise<RunAllItemResult<T, E>[]>;
-  all<T>(
+  allOrThrow<T>(
     fns: Array<() => MaybePromise<T>>,
-    options?: RunOptions<T, E>
+    options?: RunAllOrThrowOptions<T, E>
   ): Promise<T[]>;
 }
 
@@ -101,7 +109,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
   } = opts as CreateRunnerOptions<E>;
 
   let effectiveRules: Rule<E>[] = [];
-  const defaultRulesList = Object.values(defaultRules) as unknown as Rule<E>[];
+  const defaultRulesList = (getDefaultRules() || []) as unknown as Rule<E>[];
 
   if (rules.length > 0) {
     if (rulesMode === "extend") {
@@ -126,7 +134,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
 
   let failureCount = 0;
   let openUntil: number | null = null;
-  let halfOpenRemaining: number | null = null;
+  let halfOpenRequired: number | null = null;
 
   return {
     run<T>(
@@ -138,7 +146,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
 
       if (cb) {
         if (openUntil && now < openUntil) {
-          const err = toError(new Error("Circuit open"));
+          const err = toError(new CircuitOpenError());
           const mapped = composeMapError(
             defaultMapError,
             options.mapError
@@ -157,35 +165,6 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
             },
           });
         }
-        if (openUntil && now >= openUntil) {
-          openUntil = null;
-          failureCount = 0;
-          halfOpenRemaining = cb.halfOpenRequests ?? 1;
-        }
-        if (halfOpenRemaining != null) {
-          if (halfOpenRemaining <= 0) {
-            const err = toError(new Error("Circuit half-open limit"));
-            const mapped = composeMapError(
-              defaultMapError,
-              options.mapError
-            )(err);
-            options.onError?.(mapped);
-            options.onFinally?.();
-            return Promise.resolve({
-              ok: false,
-              data: null,
-              error: mapped,
-              metrics: {
-                totalAttempts: 0,
-                totalRetries: 0,
-                totalDuration: 0,
-                lastError: mapped,
-              },
-            });
-          } else {
-            halfOpenRemaining--;
-          }
-        }
       }
 
       return baseRun(fn, {
@@ -195,36 +174,59 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
         mapError: composeMapError(defaultMapError, options.mapError),
       }).then((r) => {
         if (!cb) return r;
+
         if (!r.ok) {
-          failureCount++;
-          if (failureCount >= cb.failureThreshold) {
+          // Failure
+          if (openUntil && Date.now() >= openUntil) {
+            // Half-open failure -> Open immediately
             openUntil = Date.now() + cb.resetTimeout;
-            halfOpenRemaining = null;
+            halfOpenRequired = cb.halfOpenRequests ?? 1;
+            failureCount = 0;
+          } else if (!openUntil) {
+            // Closed failure -> Count threshold
+            failureCount++;
+            if (failureCount >= cb.failureThreshold) {
+              openUntil = Date.now() + cb.resetTimeout;
+              halfOpenRequired = cb.halfOpenRequests ?? 1;
+            }
           }
         } else {
-          failureCount = 0;
-          openUntil = null;
-          halfOpenRemaining = null;
+          // Success
+          if (openUntil && Date.now() >= openUntil) {
+            // Half-open success
+            if (halfOpenRequired && halfOpenRequired > 0) {
+              halfOpenRequired--;
+            }
+            if (!halfOpenRequired || halfOpenRequired <= 0) {
+              // Closed
+              openUntil = null;
+              failureCount = 0;
+              halfOpenRequired = null;
+            }
+          } else {
+            // Closed success -> Reset failure count
+            failureCount = 0;
+          }
         }
         return r;
       });
     },
-    allSettled<T>(
-      fns: Array<() => Promise<T>>,
+    all<T>(
+      fns: Array<() => MaybePromise<T>>,
       options: RunAllOptions<T, E> = {}
     ): Promise<RunAllItemResult<T, E>[]> {
-      return baseRunAllSettled(fns, {
+      return baseRunAll(fns, {
         toError,
         ignoreAbort,
         ...options,
         mapError: composeMapError(defaultMapError, options.mapError),
       });
     },
-    all<T>(
-      fns: (() => Promise<T>)[],
+    allOrThrow<T>(
+      fns: Array<() => MaybePromise<T>>,
       options: RunAllOrThrowOptions<T, E> = {}
     ): Promise<T[]> {
-      return baseRunAll(fns, {
+      return baseRunAllOrThrow(fns, {
         toError,
         ignoreAbort,
         ...options,

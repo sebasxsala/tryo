@@ -12,17 +12,17 @@ type Item = { id: string };
 const r = await run<Item>(() => fetch("/api").then((x) => x.json()));
 ```
 
-## Helpers de resultado en `runAllSettled`
+## Helpers de resultado en `runAll`
 
 ```typescript
 import {
-  runAllSettled,
+  runAll,
   isSuccess,
   type SuccessResult,
   type ErrorResult,
 } from "trybox";
 
-const rs = await runAllSettled<number>([async () => 1]);
+const rs = await runAll<number>([async () => 1]);
 ```
 
 const ok: SuccessResult<number>[] = rs.filter(isSuccess);

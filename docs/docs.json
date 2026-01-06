@@ -112,7 +112,8 @@
             "pages": [
               "es/api-reference/trybox",
               "es/api-reference/run",
-              "es/api-reference/run-all"
+              "es/api-reference/run-all",
+              "es/api-reference/run-all-or-throw"
             ]
           }
         ]

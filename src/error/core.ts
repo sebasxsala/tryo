@@ -1,5 +1,27 @@
 import type { ResultError, Rule } from "./types";
 
+export class CircuitOpenError extends Error {
+  constructor() {
+    super("Circuit open");
+    this.name = "CircuitOpenError";
+  }
+}
+
+export const circuitOpen: Rule<ResultError<"CIRCUIT_OPEN">> = (err) => {
+  // console.log("Checking CircuitOpenError", err, err instanceof CircuitOpenError);
+  if (
+    err instanceof CircuitOpenError ||
+    (err instanceof Error && err.name === "CircuitOpenError")
+  ) {
+    return {
+      code: "CIRCUIT_OPEN",
+      message: "Circuit open",
+      cause: err,
+    };
+  }
+  return null;
+};
+
 export const abort: Rule<ResultError<"ABORTED">> = (err) => {
   if (err instanceof DOMException && err.name === "AbortError") {
     return { code: "ABORTED", message: "Request cancelled", cause: err };
@@ -85,6 +107,7 @@ export const message: Rule<ResultError<"UNKNOWN">> = (err) => {
 };
 
 export const rules = {
+  circuitOpen,
   abort,
   timeout,
   httpStatus,
@@ -92,3 +115,17 @@ export const rules = {
   string,
   message,
 } satisfies Record<string, Rule<ResultError>>;
+
+export function getDefaultRules() {
+  return [
+    circuitOpen,
+    abort,
+    timeout,
+    httpStatus,
+    aggregate,
+    string,
+    message,
+  ] as const;
+}
+
+export const defaultRules = getDefaultRules();

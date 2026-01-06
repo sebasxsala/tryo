@@ -14,7 +14,7 @@ import { applyJitter, resolveRetryDelay, sleep } from "../utils";
  * React effects, and any async context.
  */
 export async function run<T, E extends ResultError = ResultError>(
-  fn: () => MaybePromise<T>,
+  fn: (ctx?: { signal: AbortSignal }) => MaybePromise<T>,
   options: RunOptions<T, E> = {}
 ): Promise<RunResult<T, E>> {
   const {
@@ -71,21 +71,46 @@ export async function run<T, E extends ResultError = ResultError>(
   let lastDelay = 0;
 
   while (true) {
-    try {
-      let timeoutId: any = null;
-      const timeoutPromise =
-        timeout && timeout > 0
-          ? new Promise<never>((_, reject) => {
-              timeoutId = setTimeout(
-                () => reject(new DOMException("Timeout", "TimeoutError")),
-                timeout
-              );
-            })
-          : null;
+    const controller = new AbortController();
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+      } else {
+        signal.addEventListener(
+          "abort",
+          () => controller.abort(signal.reason),
+          {
+            once: true,
+          }
+        );
+      }
+    }
 
-      const data = await (timeoutPromise
-        ? Promise.race([fn(), timeoutPromise])
-        : fn());
+    let timeoutId: any = null;
+    if (timeout && timeout > 0) {
+      timeoutId = setTimeout(() => {
+        controller.abort(new DOMException("Timeout", "TimeoutError"));
+      }, timeout);
+    }
+
+    try {
+      const abortPromise = new Promise<never>((_, reject) => {
+        if (controller.signal.aborted) {
+          reject(controller.signal.reason);
+        } else {
+          controller.signal.addEventListener(
+            "abort",
+            () => reject(controller.signal.reason),
+            { once: true }
+          );
+        }
+      });
+
+      const data = await Promise.race([
+        fn({ signal: controller.signal }),
+        abortPromise,
+      ]);
+
       if (timeoutId) clearTimeout(timeoutId);
       try {
         onSuccess?.(data);
@@ -142,7 +167,7 @@ export async function run<T, E extends ResultError = ResultError>(
           }
           const totalDuration = Date.now() - startedAt;
           const metrics = {
-            totalAttempts: attempt,
+            totalAttempts: attempt + 1,
             totalRetries: attempt,
             totalDuration,
             lastError: err,
