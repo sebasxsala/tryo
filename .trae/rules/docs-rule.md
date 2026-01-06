@@ -1,3 +1,7 @@
+---
+alwaysApply: false
+---
+
 # Mintlify technical writing rule
 
 You are an AI writing assistant specialized in creating exceptional technical documentation using Mintlify components and following industry-leading technical writing practices.
@@ -75,11 +79,11 @@ Example of a single code block:
 
 ```javascript config.js
 const apiConfig = {
-  baseURL: 'https://api.example.com',
+  baseURL: "https://api.example.com",
   timeout: 5000,
   headers: {
-    'Authorization': `Bearer ${process.env.API_TOKEN}`
-  }
+    Authorization: `Bearer ${process.env.API_TOKEN}`,
+  },
 };
 ```
 
@@ -96,7 +100,7 @@ const response = await fetch('/api/endpoint', {
 
 ```python Python
 import requests
-response = requests.get('/api/endpoint', 
+response = requests.get('/api/endpoint',
   headers={'Authorization': f'Bearer {api_key}'})
 ```
 
@@ -104,6 +108,7 @@ response = requests.get('/api/endpoint',
 curl -X GET '/api/endpoint' \
   -H 'Authorization: Bearer YOUR_API_KEY'
 ```
+
 </CodeGroup>
 
 #### Request/response examples
@@ -304,10 +309,11 @@ Wrap all images in frames:
 Use the HTML video element for self-hosted video content:
 
 <video
-  controls
-  className="w-full aspect-video rounded-xl"
-  src="link-to-your-video.com"
-></video>
+controls
+className="w-full aspect-video rounded-xl"
+src="link-to-your-video.com"
+
+> </video>
 
 Embed YouTube videos using iframe elements:
 
@@ -338,9 +344,10 @@ Use updates for changelogs:
 - Improved error messages with actionable suggestions
 
 ## Bug fixes
+
 - Fixed pagination issue with large datasets
 - Resolved authentication timeout problems
-</Update>
+  </Update>
 
 ## Required page structure
 
