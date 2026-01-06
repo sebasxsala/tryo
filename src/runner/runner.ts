@@ -1,10 +1,5 @@
 import type { ResultError, Rule, InferErrorFromRules } from "../error/types";
-import {
-  rules as defaultRulesObj,
-  defaultRules,
-  getDefaultRules,
-  CircuitOpenError,
-} from "../error/core";
+import { getDefaultRules, CircuitOpenError } from "../error/core";
 import {
   createNormalizer,
   defaultFallback,
