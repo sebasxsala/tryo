@@ -1,4 +1,4 @@
-import type { ResultError, Rule } from "./types";
+import type { ResultError, Rule, InferErrorFromRules } from "./types";
 
 export class CircuitOpenError extends Error {
   constructor() {
@@ -129,3 +129,6 @@ export function getDefaultRules() {
 }
 
 export const defaultRules = getDefaultRules();
+
+export type DefaultRules = typeof defaultRules;
+export type DefaultError = InferErrorFromRules<DefaultRules>;

@@ -28,17 +28,31 @@ export { errorRule } from "./error/builder";
 import type { ResultError, Rule, InferErrorFromRules } from "./error/types";
 import { createRunner } from "./runner/runner";
 import type { CreateRunnerOptions, Runner } from "./runner/runner";
+import type { DefaultError } from "./error/core";
 
 export default function trybox(
   options?: Omit<CreateRunnerOptions<ResultError>, "rules">
 ): Runner<ResultError>;
 
 export default function trybox<const TRules extends readonly Rule<any>[]>(
-  options: { rules: TRules } & Omit<
+  options: {
+    rules: TRules;
+    rulesMode: "replace";
+  } & Omit<
     CreateRunnerOptions<InferErrorFromRules<TRules>>,
-    "rules"
+    "rules" | "rulesMode"
   >
 ): Runner<InferErrorFromRules<TRules>>;
+
+export default function trybox<const TRules extends readonly Rule<any>[]>(
+  options: {
+    rules: TRules;
+    rulesMode?: "extend";
+  } & Omit<
+    CreateRunnerOptions<InferErrorFromRules<TRules> | DefaultError>,
+    "rules" | "rulesMode"
+  >
+): Runner<InferErrorFromRules<TRules> | DefaultError>;
 
 export default function trybox(options: any = {}): any {
   return createRunner(options);

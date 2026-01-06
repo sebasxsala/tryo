@@ -1,5 +1,9 @@
 import type { ResultError, Rule, InferErrorFromRules } from "../error/types";
-import { getDefaultRules, CircuitOpenError } from "../error/core";
+import {
+  getDefaultRules,
+  CircuitOpenError,
+  type DefaultError,
+} from "../error/core";
 import {
   createNormalizer,
   defaultFallback,
@@ -82,11 +86,24 @@ export function createRunner(
 ): Runner<ResultError>;
 
 export function createRunner<const TRules extends readonly Rule<any>[]>(
-  opts: { rules: TRules } & Omit<
+  opts: {
+    rules: TRules;
+    rulesMode: "replace";
+  } & Omit<
     CreateRunnerOptions<InferErrorFromRules<TRules>>,
-    "rules"
+    "rules" | "rulesMode"
   >
 ): Runner<InferErrorFromRules<TRules>>;
+
+export function createRunner<const TRules extends readonly Rule<any>[]>(
+  opts: {
+    rules: TRules;
+    rulesMode?: "extend";
+  } & Omit<
+    CreateRunnerOptions<InferErrorFromRules<TRules> | DefaultError>,
+    "rules" | "rulesMode"
+  >
+): Runner<InferErrorFromRules<TRules> | DefaultError>;
 
 export function createRunner<const TRules extends readonly Rule<any>[] = []>(
   opts: any = {}
