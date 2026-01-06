@@ -68,6 +68,7 @@ export async function run<T, E extends ResultError = ResultError>(
   const startedAt = Date.now();
   let attempt = 0;
   let lastError: E | undefined;
+  let lastDelay = 0;
 
   while (true) {
     try {
@@ -159,6 +160,8 @@ export async function run<T, E extends ResultError = ResultError>(
       const context = {
         totalAttempts: nextAttempt,
         elapsedTime: Date.now() - startedAt,
+        startTime: startedAt,
+        lastDelay: lastDelay > 0 ? lastDelay : undefined,
       };
       const decision = await Promise.resolve(
         shouldRetry(nextAttempt, err, context)
@@ -180,6 +183,7 @@ export async function run<T, E extends ResultError = ResultError>(
         if (!Number.isFinite(delay) || delay < 0) delay = 0;
 
         delay = applyJitter(delay, jitter);
+        lastDelay = delay;
 
         onRetry?.(attempt, err, delay);
         logger?.debug?.("run:retry", { attempt, delay });

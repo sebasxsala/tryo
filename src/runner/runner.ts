@@ -49,8 +49,7 @@ export type CreateRunnerOptions<E extends ResultError = ResultError> = {
   /** Optional default mapper for all runs */
   mapError?: (error: E) => E;
   /**
-   * Default circuit breaker for all executions of the instance.
-   * Can be overridden by `options.circuitBreaker` in each `run`.
+   * Circuit breaker configuration (applies to all executions of the Runner).
    */
   circuitBreaker?: CircuitBreakerOptions;
 };
@@ -134,7 +133,7 @@ export function createRunner<const TRules extends readonly Rule<any>[] = []>(
       fn: () => Promise<T>,
       options: RunOptions<T, E> = {}
     ): Promise<RunResult<T, E>> {
-      const cb = options.circuitBreaker ?? defaultCircuitBreaker;
+      const cb = defaultCircuitBreaker;
       const now = Date.now();
 
       if (cb) {

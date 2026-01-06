@@ -167,3 +167,28 @@ useEffect(() => {
   };
 }, []);
 ```
+
+## Cancellation and Timeout
+
+- `signal` and `timeout` control how long we wait for the operation to finish.
+- If your `fn` does not use the provided `AbortSignal`, we cannot cancel the underlying I/O magically.
+- The library races the work and can return `ABORTED`/`TIMEOUT` quickly, but it does not terminate the request unless your code cooperates with the `signal`.
+
+```typescript
+const controller = new AbortController();
+const r = await runner.run(fetchData, { signal: controller.signal, timeout: 3000 });
+// If fetchData doesn't use the signal, run() will stop waiting and return TIMEOUT/ABORTED,
+// but the inner request continues unless it handles the signal.
+```
+
+## Circuit Breaker (Runner-level)
+
+- Configuration lives at the Runner level via `trybox({ circuitBreaker: ... })`.
+- Per-call circuit breaker in `RunOptions` is not supported to reduce API surface.
+- Example:
+
+```typescript
+const runner = trybox({
+  circuitBreaker: { failureThreshold: 3, resetTimeout: 1000, halfOpenRequests: 1 },
+});
+```

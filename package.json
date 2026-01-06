@@ -1,6 +1,6 @@
 {
   "name": "trybox",
-  "version": "0.9.5",
+  "version": "0.10.0",
   "description": "Run sync/async functions and return a typed Result instead of throwing.",
   "type": "module",
   "sideEffects": false,

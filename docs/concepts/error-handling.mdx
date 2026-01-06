@@ -79,3 +79,19 @@ const r = await run(() => fetch("/api"), {
   mapError: (e) => ({ ...e, message: `[api] ${e.message}` }),
 });
 ```
+
+## Cancellation and Timeout
+
+- `signal` and `timeout` affect how long we wait for the task to complete.
+- If your function does not consume the provided `AbortSignal`, the library cannot cancel underlying I/O automatically.
+- We race the task and return `ABORTED`/`TIMEOUT` promptly, but the inner request only stops if it cooperates with `signal`.
+
+```typescript
+const controller = new AbortController();
+const r = await run(() => fetch("/api"), { signal: controller.signal, timeout: 2000 });
+```
+
+## Circuit Breaker (Runner-level)
+
+- Circuit breaker is configured at the Runner level: `trybox({ circuitBreaker })`.
+- Per-call circuit breaker is intentionally not exposed in `RunOptions` to keep the API lean.

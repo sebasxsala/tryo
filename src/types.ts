@@ -79,6 +79,10 @@ export type RetryContext = {
   totalAttempts: number;
   /** Elapsed time in ms since the start of `run`. */
   elapsedTime: number;
+  /** Timestamp (ms) when the execution started. */
+  startTime: number;
+  /** The delay (ms) applied before the last attempt, if any. */
+  lastDelay?: number;
 };
 
 /**
@@ -133,18 +137,13 @@ export type RunOptions<
    * Optional structured logger for debug and errors.
    */
   logger?: {
-    debug?: (msg: string, meta?: any) => void;
+    debug?: (msg: string, meta?: unknown) => void;
     error?: (msg: string, error: E) => void;
   };
   /**
    * Callback on abort, useful for reacting to `AbortSignal`.
    */
   onAbort?: (signal: AbortSignal) => void;
-  /**
-   * Per-call circuit breaker configuration.
-   * If not defined, can use the default value from `Runner`.
-   */
-  circuitBreaker?: CircuitBreakerOptions;
 };
 
 /**
@@ -162,16 +161,16 @@ export type CircuitBreakerOptions = {
 /**
  * Execution metrics optionally returned in `RunResult`.
  */
-export type Metrics = {
+export type Metrics<E extends ResultError = ResultError> = {
   totalAttempts: number;
   totalRetries: number;
   totalDuration: number;
-  lastError?: ResultError;
+  lastError?: E;
 };
 
 export type RunResult<T, E extends ResultError = ResultError> =
-  | { ok: true; data: T; error: null; metrics?: Metrics }
-  | { ok: false; data: null; error: E; metrics?: Metrics };
+  | { ok: true; data: T; error: null; metrics?: Metrics<E> }
+  | { ok: false; data: null; error: E; metrics?: Metrics<E> };
 
 /**
  * Validates common execution/retry options.
@@ -188,16 +187,16 @@ export function validateOptions<T, E extends ResultError = ResultError>(
   if (options.maxDelay != null && options.maxDelay < 0) {
     throw new Error("maxDelay must be >= 0");
   }
-  const cb = options.circuitBreaker;
-  if (cb) {
-    if (cb.failureThreshold < 1) {
-      throw new Error("failureThreshold must be >= 1");
-    }
-    if (cb.resetTimeout <= 0) {
-      throw new Error("resetTimeout must be > 0");
-    }
-    if (cb.halfOpenRequests != null && cb.halfOpenRequests < 1) {
-      throw new Error("halfOpenRequests must be >= 1");
-    }
-  }
+  // const cb = options.circuitBreaker;
+  // if (cb) {
+  //   if (cb.failureThreshold < 1) {
+  //     throw new Error("failureThreshold must be >= 1");
+  //   }
+  //   if (cb.resetTimeout <= 0) {
+  //     throw new Error("resetTimeout must be > 0");
+  //   }
+  //   if (cb.halfOpenRequests != null && cb.halfOpenRequests < 1) {
+  //     throw new Error("halfOpenRequests must be >= 1");
+  //   }
+  // }
 }
