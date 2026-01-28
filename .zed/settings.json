@@ -1,19 +1,20 @@
 {
-	"formatter": "language_server",
-	"language_servers": ["biome"],
 	"format_on_save": "on",
 	"languages": {
-		"JSON": {
-			"formatter": "language_server",
-			"format_on_save": "on"
-		},
 		"TypeScript": {
+			"language_servers": ["biome", "vtsls"],
 			"formatter": "language_server",
-			"format_on_save": "on"
+			"format_on_save": "on",
 		},
 		"JavaScript": {
+			"language_servers": ["biome", "vtsls"],
 			"formatter": "language_server",
-			"format_on_save": "on"
-		}
-	}
+			"format_on_save": "on",
+		},
+		"JSON": {
+			"language_servers": ["biome"],
+			"formatter": "language_server",
+			"format_on_save": "on",
+		},
+	},
 }

@@ -8,6 +8,14 @@
 	"files": {
 		"includes": ["**", "!!**/dist"]
 	},
+	"json": {
+		"parser": {
+			"allowTrailingCommas": true
+		},
+		"formatter": {
+			"trailingCommas": "all"
+		}
+	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"

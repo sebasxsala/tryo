@@ -5,7 +5,7 @@
 	"colors": {
 		"primary": "#16A34A",
 		"light": "#07C983",
-		"dark": "#15803D"
+		"dark": "#15803D",
 	},
 	"favicon": "/favicon.svg",
 	"navigation": {
@@ -15,7 +15,7 @@
 				"groups": [
 					{
 						"group": "Getting Started",
-						"pages": ["index", "quickstart"]
+						"pages": ["index", "quickstart"],
 					},
 					{
 						"group": "Concepts",
@@ -23,16 +23,16 @@
 							"concepts/result-type",
 							"concepts/error-handling",
 							"concepts/concurrency",
-							"concepts/retry-logic"
-						]
+							"concepts/retry-logic",
+						],
 					},
 					{
 						"group": "Guides",
 						"pages": [
 							"guides/typescript",
 							"guides/migration",
-							"guides/best-practices"
-						]
+							"guides/best-practices",
+						],
 					},
 					{
 						"group": "Advanced",
@@ -40,8 +40,8 @@
 							"advanced/custom-errors",
 							"advanced/circuit-breaker",
 							"advanced/abort-handling",
-							"advanced/testing"
-						]
+							"advanced/testing",
+						],
 					},
 					{
 						"group": "Examples",
@@ -50,8 +50,8 @@
 							"examples/batch-processing",
 							"examples/form-submission",
 							"examples/react",
-							"examples/nextjs"
-						]
+							"examples/nextjs",
+						],
 					},
 					{
 						"group": "API Reference",
@@ -59,17 +59,17 @@
 							"api-reference/trybox",
 							"api-reference/run",
 							"api-reference/run-all",
-							"api-reference/run-all-settled"
-						]
-					}
-				]
+							"api-reference/run-all-settled",
+						],
+					},
+				],
 			},
 			{
 				"language": "es",
 				"groups": [
 					{
 						"group": "Inicio",
-						"pages": ["es/index", "es/quickstart"]
+						"pages": ["es/index", "es/quickstart"],
 					},
 					{
 						"group": "Conceptos",
@@ -77,16 +77,16 @@
 							"es/concepts/result-type",
 							"es/concepts/error-handling",
 							"es/concepts/concurrency",
-							"es/concepts/retry-logic"
-						]
+							"es/concepts/retry-logic",
+						],
 					},
 					{
 						"group": "Guías",
 						"pages": [
 							"es/guides/typescript",
 							"es/guides/migration",
-							"es/guides/best-practices"
-						]
+							"es/guides/best-practices",
+						],
 					},
 					{
 						"group": "Avanzado",
@@ -94,8 +94,8 @@
 							"es/advanced/custom-errors",
 							"es/advanced/circuit-breaker",
 							"es/advanced/abort-handling",
-							"es/advanced/testing"
-						]
+							"es/advanced/testing",
+						],
 					},
 					{
 						"group": "Ejemplos",
@@ -104,8 +104,8 @@
 							"es/examples/batch-processing",
 							"es/examples/form-submission",
 							"es/examples/react",
-							"es/examples/nextjs"
-						]
+							"es/examples/nextjs",
+						],
 					},
 					{
 						"group": "Referencia de API",
@@ -113,16 +113,16 @@
 							"es/api-reference/trybox",
 							"es/api-reference/run",
 							"es/api-reference/run-all",
-							"es/api-reference/run-all-or-throw"
-						]
-					}
-				]
-			}
-		]
+							"es/api-reference/run-all-or-throw",
+						],
+					},
+				],
+			},
+		],
 	},
 	"logo": {
 		"light": "/logo/light.svg",
-		"dark": "/logo/dark.svg"
+		"dark": "/logo/dark.svg",
 	},
 	"contextual": {
 		"options": [
@@ -133,7 +133,7 @@
 			"perplexity",
 			"mcp",
 			"cursor",
-			"vscode"
-		]
-	}
+			"vscode",
+		],
+	},
 }
