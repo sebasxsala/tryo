@@ -1,139 +1,139 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "theme": "aspen",
-  "name": "Trybox",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
-  },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "languages": [
-      {
-        "language": "en",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": ["index", "quickstart"]
-          },
-          {
-            "group": "Concepts",
-            "pages": [
-              "concepts/result-type",
-              "concepts/error-handling",
-              "concepts/concurrency",
-              "concepts/retry-logic"
-            ]
-          },
-          {
-            "group": "Guides",
-            "pages": [
-              "guides/typescript",
-              "guides/migration",
-              "guides/best-practices"
-            ]
-          },
-          {
-            "group": "Advanced",
-            "pages": [
-              "advanced/custom-errors",
-              "advanced/circuit-breaker",
-              "advanced/abort-handling",
-              "advanced/testing"
-            ]
-          },
-          {
-            "group": "Examples",
-            "pages": [
-              "examples/api-calls",
-              "examples/batch-processing",
-              "examples/form-submission",
-              "examples/react",
-              "examples/nextjs"
-            ]
-          },
-          {
-            "group": "API Reference",
-            "pages": [
-              "api-reference/trybox",
-              "api-reference/run",
-              "api-reference/run-all",
-              "api-reference/run-all-settled"
-            ]
-          }
-        ]
-      },
-      {
-        "language": "es",
-        "groups": [
-          {
-            "group": "Inicio",
-            "pages": ["es/index", "es/quickstart"]
-          },
-          {
-            "group": "Conceptos",
-            "pages": [
-              "es/concepts/result-type",
-              "es/concepts/error-handling",
-              "es/concepts/concurrency",
-              "es/concepts/retry-logic"
-            ]
-          },
-          {
-            "group": "Guías",
-            "pages": [
-              "es/guides/typescript",
-              "es/guides/migration",
-              "es/guides/best-practices"
-            ]
-          },
-          {
-            "group": "Avanzado",
-            "pages": [
-              "es/advanced/custom-errors",
-              "es/advanced/circuit-breaker",
-              "es/advanced/abort-handling",
-              "es/advanced/testing"
-            ]
-          },
-          {
-            "group": "Ejemplos",
-            "pages": [
-              "es/examples/api-calls",
-              "es/examples/batch-processing",
-              "es/examples/form-submission",
-              "es/examples/react",
-              "es/examples/nextjs"
-            ]
-          },
-          {
-            "group": "Referencia de API",
-            "pages": [
-              "es/api-reference/trybox",
-              "es/api-reference/run",
-              "es/api-reference/run-all",
-              "es/api-reference/run-all-or-throw"
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
-  }
+	"$schema": "https://mintlify.com/docs.json",
+	"theme": "aspen",
+	"name": "Trybox",
+	"colors": {
+		"primary": "#16A34A",
+		"light": "#07C983",
+		"dark": "#15803D"
+	},
+	"favicon": "/favicon.svg",
+	"navigation": {
+		"languages": [
+			{
+				"language": "en",
+				"groups": [
+					{
+						"group": "Getting Started",
+						"pages": ["index", "quickstart"]
+					},
+					{
+						"group": "Concepts",
+						"pages": [
+							"concepts/result-type",
+							"concepts/error-handling",
+							"concepts/concurrency",
+							"concepts/retry-logic"
+						]
+					},
+					{
+						"group": "Guides",
+						"pages": [
+							"guides/typescript",
+							"guides/migration",
+							"guides/best-practices"
+						]
+					},
+					{
+						"group": "Advanced",
+						"pages": [
+							"advanced/custom-errors",
+							"advanced/circuit-breaker",
+							"advanced/abort-handling",
+							"advanced/testing"
+						]
+					},
+					{
+						"group": "Examples",
+						"pages": [
+							"examples/api-calls",
+							"examples/batch-processing",
+							"examples/form-submission",
+							"examples/react",
+							"examples/nextjs"
+						]
+					},
+					{
+						"group": "API Reference",
+						"pages": [
+							"api-reference/trybox",
+							"api-reference/run",
+							"api-reference/run-all",
+							"api-reference/run-all-settled"
+						]
+					}
+				]
+			},
+			{
+				"language": "es",
+				"groups": [
+					{
+						"group": "Inicio",
+						"pages": ["es/index", "es/quickstart"]
+					},
+					{
+						"group": "Conceptos",
+						"pages": [
+							"es/concepts/result-type",
+							"es/concepts/error-handling",
+							"es/concepts/concurrency",
+							"es/concepts/retry-logic"
+						]
+					},
+					{
+						"group": "Guías",
+						"pages": [
+							"es/guides/typescript",
+							"es/guides/migration",
+							"es/guides/best-practices"
+						]
+					},
+					{
+						"group": "Avanzado",
+						"pages": [
+							"es/advanced/custom-errors",
+							"es/advanced/circuit-breaker",
+							"es/advanced/abort-handling",
+							"es/advanced/testing"
+						]
+					},
+					{
+						"group": "Ejemplos",
+						"pages": [
+							"es/examples/api-calls",
+							"es/examples/batch-processing",
+							"es/examples/form-submission",
+							"es/examples/react",
+							"es/examples/nextjs"
+						]
+					},
+					{
+						"group": "Referencia de API",
+						"pages": [
+							"es/api-reference/trybox",
+							"es/api-reference/run",
+							"es/api-reference/run-all",
+							"es/api-reference/run-all-or-throw"
+						]
+					}
+				]
+			}
+		]
+	},
+	"logo": {
+		"light": "/logo/light.svg",
+		"dark": "/logo/dark.svg"
+	},
+	"contextual": {
+		"options": [
+			"copy",
+			"view",
+			"chatgpt",
+			"claude",
+			"perplexity",
+			"mcp",
+			"cursor",
+			"vscode"
+		]
+	}
 }

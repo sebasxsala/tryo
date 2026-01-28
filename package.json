@@ -1,45 +1,49 @@
 {
-  "name": "trybox",
-  "version": "0.10.1",
-  "description": "Run sync/async functions and return a typed Result instead of throwing.",
-  "type": "module",
-  "sideEffects": false,
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "tsup",
-    "typecheck": "tsc --noEmit",
-    "test": "bun test",
-    "docs:dev": "cd docs && mintlify dev",
-    "docs:dev:es": "cd docs && mintlify dev --config mint.es.json",
-    "docs:build": "cd docs && mintlify build",
-    "docs:preview": "cd docs && mintlify preview",
-    "prepublishOnly": "npm run build"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "mint": "latest",
-    "tsup": "^8.5.1",
-    "typescript": "^5.0.0"
-  },
-  "license": "MIT",
-  "homepage": "https://trybox-docs.pages.dev/",
-  "bugs": "https://github.com/sebasxsala/trybox/issues",
-  "author": {
-    "name": "sebasxsala",
-    "url": "https://github.com/sebasxsala"
-  }
+	"name": "trybox",
+	"version": "0.10.1",
+	"description": "Run sync/async functions and return a typed Result instead of throwing.",
+	"type": "module",
+	"sideEffects": false,
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test",
+		"docs:dev": "cd docs && mintlify dev",
+		"docs:dev:es": "cd docs && mintlify dev --config mint.es.json",
+		"docs:build": "cd docs && mintlify build",
+		"docs:preview": "cd docs && mintlify preview",
+		"prepublishOnly": "npm run build",
+		"format": "biome format --write",
+		"lint": "biome lint --write",
+		"check": "biome check --write"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.13",
+		"@types/bun": "latest",
+		"mint": "latest",
+		"tsup": "^8.5.1",
+		"typescript": "^5.0.0"
+	},
+	"license": "MIT",
+	"homepage": "https://trybox-docs.pages.dev/",
+	"bugs": "https://github.com/sebasxsala/trybox/issues",
+	"author": {
+		"name": "sebasxsala",
+		"url": "https://github.com/sebasxsala"
+	}
 }

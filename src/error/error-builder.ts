@@ -1,0 +1,243 @@
+/**
+ * Modern fluent error rule builder
+ * Provides type-safe error rule creation with enhanced ergonomics
+ */
+
+import type { ErrorRule } from './error-normalizer';
+import { TypedError } from './typed-error';
+
+type StatusCarrier = {
+	status?: number;
+	statusCode?: number;
+	message?: string;
+};
+
+const hasNumericStatus = (err: unknown): err is StatusCarrier => {
+	if (typeof err !== 'object' || err === null) return false;
+	const candidate = err as StatusCarrier;
+	return (
+		typeof candidate.status === 'number' ||
+		typeof candidate.statusCode === 'number'
+	);
+};
+
+// Modern error rule builder with enhanced ergonomics
+export class ErrorRuleBuilder<T> {
+	constructor(private readonly predicate: (err: unknown) => err is T) {}
+
+	toCode<const C extends string>(code: C) {
+		return new ErrorMapper<T, C>(this.predicate, code);
+	}
+
+	// Map to a typed error instance (compatible with existing tests)
+	// The returned rule is usable in createErrorNormalizer/trybox({ rules }).
+	toError<
+		const Out extends {
+			code: string;
+			message: string;
+			meta?: unknown;
+			status?: number;
+			cause?: unknown;
+		},
+	>(mapper: (err: T) => Out): ErrorRule<TypedError<Out['code'], Out['meta']>> {
+		return (err: unknown) => {
+			if (!this.predicate(err)) return null;
+			const out = mapper(err as T);
+			const code = out.code as Out['code'];
+
+			class CustomError extends TypedError<Out['code'], Out['meta']> {
+				readonly code = code;
+				constructor() {
+					super(out.message, {
+						cause: out.cause ?? err,
+						meta: out.meta,
+						status: out.status,
+					});
+				}
+			}
+
+			return new CustomError();
+		};
+	}
+}
+
+// Error mapper for code-based mapping
+export class ErrorMapper<T, C extends string> {
+	constructor(
+		private readonly predicate: (err: unknown) => err is T,
+		private readonly errorCode: C,
+	) {}
+
+	with<const M = unknown>(
+		mapper: (err: T) => {
+			message: string;
+			cause?: unknown;
+			meta?: M;
+			status?: number;
+		},
+	) {
+		return (err: unknown): TypedError<C, M> | null => {
+			if (!this.predicate(err)) return null;
+			const mapped = mapper(err);
+
+			const errorCode = this.errorCode;
+			class CustomTypedError extends TypedError<C, M> {
+				readonly code = errorCode;
+				constructor() {
+					super(mapped.message, {
+						cause: mapped.cause,
+						meta: mapped.meta,
+						status: mapped.status,
+					});
+				}
+			}
+
+			return new CustomTypedError();
+		};
+	}
+}
+
+// Enhanced error rule factory with modern patterns
+export const createErrorRule = {
+	when: <T>(predicate: (err: unknown) => err is T) =>
+		new ErrorRuleBuilder(predicate),
+
+	instance: <T extends new (...args: unknown[]) => unknown>(ErrorClass: T) =>
+		new ErrorRuleBuilder(
+			(err): err is InstanceType<T> => err instanceof ErrorClass,
+		),
+
+	code: <C extends string>(code: C) => ({
+		for: <T>(predicate: (err: unknown) => err is T) =>
+			new ErrorMapper(predicate, code),
+	}),
+
+	// Built-in error rules for common cases
+	string: <C extends string>(message: string, code: C) => ({
+		when: <T>(predicate: (err: unknown) => err is T) =>
+			createErrorRule
+				.when(predicate)
+				.toCode(code)
+				.with((err) => ({
+					message: err === message ? message : `${code}: ${err}`,
+					cause: err,
+				})),
+	}),
+
+	// HTTP status error rule
+	httpStatus: <C extends string>(status: number, code?: C) => ({
+		for: <T>(predicate: (err: unknown) => err is T) =>
+			createErrorRule
+				.when(predicate)
+				.toCode(code ?? `HTTP_${status}`)
+				.with((err) => ({
+					message: `HTTP ${status} error`,
+					cause: err,
+				})),
+	}),
+
+	// NOTE: advanced helpers removed for simplicity
+} as const;
+
+// Legacy compatibility exports
+export { ErrorRuleBuilder as errorRuleBuilder, ErrorMapper as errorMapper };
+
+// Utility functions for rule composition
+export const combineRules = <E extends TypedError>(
+	...rules: ErrorRule<E>[]
+): ErrorRule<E> => {
+	return (error: unknown): E | null => {
+		for (const rule of rules) {
+			const result = rule(error);
+			if (result !== null) {
+				return result;
+			}
+		}
+		return null;
+	};
+};
+
+export const chainRules = (
+	...rules: Array<ErrorRule<TypedError> | ((err: unknown) => TypedError | null)>
+): ErrorRule<TypedError> => {
+	return (error: unknown): TypedError | null => {
+		const currentError = error;
+
+		for (const rule of rules) {
+			const result = rule(currentError);
+			if (result !== null) {
+				return result;
+			}
+		}
+
+		return null;
+	};
+};
+
+// Built-in error rule presets
+export const BuiltinRules = {
+	// Abort errors
+	abort: createErrorRule
+		.when(
+			(err): err is DOMException =>
+				err instanceof DOMException && err.name === 'AbortError',
+		)
+		.toCode('ABORTED')
+		.with((err) => ({
+			message: err.message || 'Operation was aborted',
+			cause: err,
+		})),
+
+	// Timeout errors
+	timeout: createErrorRule
+		.when(
+			(err): err is Error =>
+				err instanceof Error && err.name === 'TimeoutError',
+		)
+		.toCode('TIMEOUT')
+		.with((err) => ({
+			message: err.message || 'Operation timed out',
+			cause: err,
+		})),
+
+	// Network errors
+	network: createErrorRule
+		.when((err): err is StatusCarrier => hasNumericStatus(err))
+		.toCode('NETWORK')
+		.with((err) => {
+			const status = err.status ?? err.statusCode;
+			return {
+				message:
+					err.message || `Network error with status ${status ?? 'unknown'}`,
+				cause: err,
+			};
+		}),
+
+	// HTTP errors (4xx, 5xx)
+	http: createErrorRule
+		.when((err): err is StatusCarrier => {
+			if (!hasNumericStatus(err)) {
+				return false;
+			}
+			const candidate = err as StatusCarrier;
+			const status = candidate.status ?? candidate.statusCode;
+			return typeof status === 'number' && status >= 400;
+		})
+		.toCode('HTTP')
+		.with((err) => {
+			const status = err.status ?? err.statusCode;
+			return {
+				message: err.message || `HTTP ${status ?? 'error'} error`,
+				cause: err,
+			};
+		}),
+
+	// Generic error fallback
+	unknown: createErrorRule
+		.when((err): err is Error => err instanceof Error)
+		.toCode('UNKNOWN')
+		.with((err) => ({
+			message: err.message || 'Unknown error occurred',
+			cause: err,
+		})),
+} as const;
