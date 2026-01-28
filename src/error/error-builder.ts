@@ -176,6 +176,10 @@ export const chainRules = (
 
 // Built-in error rule presets
 export const BuiltinRules = {
+	// Preserve TypedError instances as-is
+	typed: ((err: unknown): TypedError | null =>
+		err instanceof TypedError ? err : null) as ErrorRule<TypedError>,
+
 	// Abort errors
 	abort: createErrorRule
 		.when(
@@ -234,7 +238,10 @@ export const BuiltinRules = {
 
 	// Generic error fallback
 	unknown: createErrorRule
-		.when((err): err is Error => err instanceof Error)
+		.when(
+			(err): err is Error =>
+				err instanceof Error && !(err instanceof TypedError),
+		)
 		.toCode('UNKNOWN')
 		.with((err) => ({
 			message: err.message || 'Unknown error occurred',

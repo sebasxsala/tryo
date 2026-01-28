@@ -16,14 +16,23 @@ export const sleep = (
 			return;
 		}
 
-		const timeoutId = setTimeout(() => {
-			resolve();
-		}, ms as number);
+		const cleanup = (onAbort?: () => void) => {
+			if (signal && onAbort) {
+				signal.removeEventListener('abort', onAbort);
+			}
+		};
 
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
 		const onAbort = () => {
-			clearTimeout(timeoutId);
+			if (timeoutId) clearTimeout(timeoutId);
+			cleanup(onAbort);
 			reject(new DOMException('Aborted', 'AbortError'));
 		};
+
+		timeoutId = setTimeout(() => {
+			cleanup(onAbort);
+			resolve();
+		}, ms as number);
 
 		signal?.addEventListener('abort', onAbort, { once: true });
 	});

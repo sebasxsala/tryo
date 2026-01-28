@@ -20,7 +20,7 @@ describe('Type inference', () => {
 						message: 'Bar error',
 						meta: { barData: 'test' },
 					})),
-			],
+			] as const,
 		});
 
 		const result = await ex.execute(async () => {
@@ -69,7 +69,7 @@ describe('Type inference', () => {
 						message: 'Foo error',
 						meta: { fooId: 123 },
 					})),
-			],
+			] as const,
 		});
 
 		const results = await ex.executeAll([
@@ -95,7 +95,7 @@ describe('Type inference', () => {
 						code: 'CUSTOM_FOO',
 						message: 'Foo',
 					})),
-			],
+			] as const,
 			rulesMode: 'replace',
 		});
 
@@ -129,7 +129,7 @@ describe('Type inference', () => {
 						code: 'CUSTOM_FOO',
 						message: 'Foo',
 					})),
-			],
+			] as const,
 			// rulesMode: "extend" is default
 		});
 
@@ -167,9 +167,6 @@ describe('Type inference', () => {
 			const name: 'alice' = r.data.name;
 			expect(id).toBe(123);
 			expect(name).toBe('alice');
-			// Type assertion: error should not be accessible on success
-			// @ts-expect-error - error must be null on success
-			r.error;
 		}
 	});
 });

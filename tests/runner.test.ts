@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { ExecutorOptions } from '../src/core/executor';
 import { Executor } from '../src/core/executor';
+import { asMilliseconds, asRetryCount } from '../src/types/branded-types';
 import { sleep } from '../src/utils/timing';
 
 const make = (opts: ExecutorOptions = {}) => new Executor(opts);
@@ -39,7 +40,7 @@ describe('run: timeout', () => {
 				await sleep(50);
 				return 'done';
 			},
-			{ timeout: 10 },
+			{ timeout: asMilliseconds(10) },
 		);
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.code).toBe('TIMEOUT');
@@ -101,7 +102,7 @@ describe('run: abort metrics', () => {
 				await sleep(20);
 				return 1;
 			},
-			{ timeout: 5 },
+			{ timeout: asMilliseconds(5) },
 		);
 		expect(r.ok).toBe(false);
 		expect(Number(r.metrics?.totalAttempts)).toBe(1);
@@ -112,9 +113,9 @@ describe('runner: circuit breaker', () => {
 	it('opens after threshold and short-circuits with CIRCUIT_OPEN', async () => {
 		const ex = make({
 			circuitBreaker: {
-				failureThreshold: 2,
-				resetTimeout: 50,
-				halfOpenRequests: 1,
+				failureThreshold: asRetryCount(2),
+				resetTimeout: asMilliseconds(50),
+				halfOpenRequests: asRetryCount(1),
 			},
 		});
 		const fail = async () => {

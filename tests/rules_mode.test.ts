@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import type { ExecutorOptions } from '../src/core/executor';
 import { Executor } from '../src/core/executor';
 import { errorRule } from '../src/error/error-rules';
+import { asMilliseconds } from '../src/types/branded-types';
 import { sleep } from '../src/utils/timing';
 
 describe('rulesMode default behavior', () => {
@@ -33,7 +34,7 @@ describe('rulesMode default behavior', () => {
 				await sleep(50);
 				return 'done';
 			},
-			{ timeout: 10 },
+			{ timeout: asMilliseconds(10) },
 		);
 
 		// If default rules are present, it should be TIMEOUT.

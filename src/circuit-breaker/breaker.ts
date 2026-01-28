@@ -50,7 +50,19 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 	// Check if execution is allowed
 	async canExecute(): Promise<boolean> {
 		this.updateStateIfNeeded();
-		return this.state.state !== 'open';
+		if (this.state.state === 'open') {
+			return false;
+		}
+		if (this.state.state === 'half-open') {
+			if (this.state.halfOpenCount >= this.config.halfOpenRequests) {
+				return false;
+			}
+			this.state = {
+				...this.state,
+				halfOpenCount: (this.state.halfOpenCount + 1) as RetryCount,
+			};
+		}
+		return true;
 	}
 
 	// Record successful execution

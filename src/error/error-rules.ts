@@ -12,10 +12,11 @@ export { BuiltinRules };
 
 // Combined built-in rules array
 export const builtInRules: ErrorRule[] = [
+	BuiltinRules.typed,
 	BuiltinRules.abort,
 	BuiltinRules.timeout,
-	BuiltinRules.network,
 	BuiltinRules.http,
+	BuiltinRules.network,
 	BuiltinRules.unknown,
 ];
 

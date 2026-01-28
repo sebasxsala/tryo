@@ -87,6 +87,7 @@ const buildNormalizer = <E extends TypedError>(
 export class Executor<E extends TypedError = TypedError> {
 	private readonly circuitBreaker?: CircuitBreaker<E>;
 	private readonly config: ExecutionConfig<E>;
+	private lastCircuitState?: 'closed' | 'open' | 'half-open';
 
 	constructor(options: ExecutorOptions<E> = {}) {
 		const {
@@ -110,6 +111,7 @@ export class Executor<E extends TypedError = TypedError> {
 
 		if (baseConfig.circuitBreaker) {
 			this.circuitBreaker = new CircuitBreaker(baseConfig.circuitBreaker);
+			this.lastCircuitState = this.circuitBreaker.getState().state;
 		}
 	}
 
@@ -122,7 +124,14 @@ export class Executor<E extends TypedError = TypedError> {
 
 		// Circuit breaker check
 		if (this.circuitBreaker) {
+			const before =
+				this.lastCircuitState ?? this.circuitBreaker.getState().state;
 			const canExecute = await this.circuitBreaker.canExecute();
+			const after = this.circuitBreaker.getState().state;
+			if (before !== after) {
+				mergedConfig.hooks?.onCircuitStateChange?.(before, after);
+			}
+			this.lastCircuitState = after;
 			if (!canExecute) {
 				const error = this.circuitBreaker.createOpenError() as E;
 
@@ -147,11 +156,18 @@ export class Executor<E extends TypedError = TypedError> {
 
 		// Update circuit breaker state
 		if (this.circuitBreaker) {
+			const before =
+				this.lastCircuitState ?? this.circuitBreaker.getState().state;
 			if (result.ok) {
 				await this.circuitBreaker.recordSuccess();
 			} else {
 				await this.circuitBreaker.recordFailure(result.error);
 			}
+			const after = this.circuitBreaker.getState().state;
+			if (before !== after) {
+				mergedConfig.hooks?.onCircuitStateChange?.(before, after);
+			}
+			this.lastCircuitState = after;
 		}
 
 		return result;
@@ -192,6 +208,7 @@ export class Executor<E extends TypedError = TypedError> {
 			{ length: Math.min(concurrency, tasks.length) },
 			() => worker(),
 		);
+
 		await Promise.all(workers);
 
 		return out;
@@ -230,11 +247,17 @@ export class Executor<E extends TypedError = TypedError> {
 
 	// Create a new executor with merged configuration
 	withConfig(additionalConfig: Partial<ExecutionConfig<E>>): Executor<E> {
-		const { errorHandling: _currentHandling, ...baseConfig } = this.config;
-		const { errorHandling: _newHandling, ...extraConfig } = additionalConfig;
+		const { errorHandling: currentHandling, ...baseConfig } = this.config;
+		const { errorHandling: nextHandling, ...extraConfig } = additionalConfig;
+
+		const normalizer = nextHandling?.normalizer ?? currentHandling.normalizer;
+		const mapError = nextHandling?.mapError ?? currentHandling.mapError;
+
 		return new Executor<E>({
 			...baseConfig,
 			...extraConfig,
+			toError: normalizer,
+			mapError,
 		});
 	}
 
@@ -246,6 +269,16 @@ export class Executor<E extends TypedError = TypedError> {
 	}
 }
 
+export function createExecutor<
+	const TRules extends readonly ErrorRule<TypedError>[],
+>(
+	options: Omit<ExecutorOptions<InferErrorFromRules<TRules>>, 'rules'> & {
+		rules: TRules;
+	},
+): Executor<InferErrorFromRules<TRules>>;
+export function createExecutor<E extends TypedError = DefaultError>(
+	options?: ExecutorOptions<E>,
+): Executor<E>;
 export function createExecutor<E extends TypedError = DefaultError>(
 	options?: ExecutorOptions<E>,
 ): Executor<E> {
@@ -277,136 +310,164 @@ async function executeInternal<T, E extends TypedError>(
 	}> = [];
 	const startTime = Date.now();
 
-	const compositeSignal = createCompositeSignal(outerSignal);
-	if (compositeSignal.aborted) {
-		// normalize abort immediately
-		const e = errorHandling.normalizer(
-			new DOMException('Aborted', 'AbortError'),
-		);
-		const mapped = errorHandling.mapError ? errorHandling.mapError(e) : e;
-		return {
-			type: 'aborted',
-			ok: false,
-			data: null,
-			error: mapped,
-			metrics: {
+	const { signal: compositeSignal, cleanup: cleanupCompositeSignal } =
+		createCompositeSignal(outerSignal);
+
+	try {
+		if (compositeSignal.aborted) {
+			hooks?.onAbort?.(compositeSignal);
+			// normalize abort immediately
+			const e = errorHandling.normalizer(
+				new DOMException('Aborted', 'AbortError'),
+			);
+			const mapped = errorHandling.mapError ? errorHandling.mapError(e) : e;
+			return {
+				type: 'aborted',
+				ok: false,
+				data: null,
+				error: mapped,
+				metrics: {
+					totalAttempts,
+					totalRetries,
+					totalDuration: (Date.now() - startTime) as Milliseconds,
+					lastError: mapped,
+					retryHistory,
+				},
+			};
+		}
+
+		const runAttempt = async (attempt: number): Promise<T> => {
+			totalAttempts = attempt as RetryCount;
+			try {
+				const p = task({ signal: compositeSignal });
+				const data = timeout
+					? await withTimeout(p, timeout, compositeSignal)
+					: await p;
+				hooks?.onSuccess?.(data);
+				logger?.info?.(`Task succeeded on attempt ${attempt}`);
+				return data;
+			} catch (err) {
+				const norm = errorHandling.normalizer(err);
+				const mapped = errorHandling.mapError
+					? errorHandling.mapError(norm)
+					: norm;
+				lastError = mapped;
+				if (mapped.code === 'ABORTED') {
+					hooks?.onAbort?.(compositeSignal);
+				}
+
+				if (!(ignoreAbort && mapped.code === 'ABORTED')) {
+					hooks?.onError?.(mapped);
+					logger?.error?.(`Task failed on attempt ${attempt}`, mapped);
+				}
+
+				if (attempt <= (retry?.maxRetries ?? (0 as RetryCount))) {
+					const shouldRetry = retry?.shouldRetry;
+					const ctx = {
+						totalAttempts: totalAttempts,
+						elapsedTime: (Date.now() - startTime) as Milliseconds,
+						startTime: new Date(startTime),
+						lastDelay: retryHistory[retryHistory.length - 1]?.delay,
+					};
+
+					if (!shouldRetry || shouldRetry(attempt as RetryCount, mapped, ctx)) {
+						const delay = retry
+							? (calculateDelay(
+									retry.strategy,
+									attempt as RetryCount,
+									mapped,
+								) as Milliseconds)
+							: (0 as Milliseconds);
+
+						retryHistory.push({
+							attempt: attempt as RetryCount,
+							error: mapped,
+							delay,
+							timestamp: new Date(),
+						});
+						hooks?.onRetry?.(attempt as RetryCount, mapped, delay);
+						logger?.info?.(`Retrying in ${delay}ms (attempt ${attempt + 1})`);
+
+						await sleep(delay as number, compositeSignal);
+						return runAttempt(attempt + 1);
+					}
+				}
+
+				throw mapped;
+			}
+		};
+
+		try {
+			const data = await runAttempt(1);
+			totalRetries =
+				totalAttempts > (0 as RetryCount)
+					? ((Number(totalAttempts) - 1) as RetryCount)
+					: (0 as RetryCount);
+			const metrics: ExecutionMetrics<E> = {
 				totalAttempts,
 				totalRetries,
 				totalDuration: (Date.now() - startTime) as Milliseconds,
-				lastError: mapped,
 				retryHistory,
-			},
-		};
-	}
-
-	const runAttempt = async (attempt: number): Promise<T> => {
-		totalAttempts = attempt as RetryCount;
-		try {
-			const p = task({ signal: compositeSignal });
-			const data = timeout
-				? await withTimeout(p, timeout, compositeSignal)
-				: await p;
-			hooks?.onSuccess?.(data);
-			logger?.info?.(`Task succeeded on attempt ${attempt}`);
-			return data;
+			};
+			hooks?.onFinally?.(metrics);
+			return { type: 'success', ok: true, data, error: null, metrics };
 		} catch (err) {
-			const norm = errorHandling.normalizer(err);
-			const mapped = errorHandling.mapError
-				? errorHandling.mapError(norm)
-				: norm;
-			lastError = mapped;
+			const finalError = (lastError ??
+				(errorHandling.normalizer(err) as E)) as E;
+			const kind: 'failure' | 'timeout' | 'aborted' =
+				finalError.code === 'TIMEOUT'
+					? 'timeout'
+					: finalError.code === 'ABORTED'
+						? 'aborted'
+						: 'failure';
 
-			if (!(ignoreAbort && mapped.code === 'ABORTED')) {
-				hooks?.onError?.(mapped);
-				logger?.error?.(`Task failed on attempt ${attempt}`, mapped);
-			}
+			totalRetries =
+				totalAttempts > (0 as RetryCount)
+					? ((Number(totalAttempts) - 1) as RetryCount)
+					: (0 as RetryCount);
 
-			if (attempt <= (retry?.maxRetries ?? (0 as RetryCount))) {
-				const shouldRetry = retry?.shouldRetry;
-				const ctx = {
-					totalAttempts: totalAttempts,
-					elapsedTime: (Date.now() - startTime) as Milliseconds,
-					startTime: new Date(startTime),
-					lastDelay: retryHistory[retryHistory.length - 1]?.delay,
-				};
+			const metrics: ExecutionMetrics<E> = {
+				totalAttempts,
+				totalRetries,
+				totalDuration: (Date.now() - startTime) as Milliseconds,
+				lastError: finalError,
+				retryHistory,
+			};
 
-				if (!shouldRetry || shouldRetry(attempt as RetryCount, mapped, ctx)) {
-					const delay = retry
-						? (calculateDelay(
-								retry.strategy,
-								attempt as RetryCount,
-								mapped,
-							) as Milliseconds)
-						: (0 as Milliseconds);
-
-					retryHistory.push({
-						attempt: attempt as RetryCount,
-						error: mapped,
-						delay,
-						timestamp: new Date(),
-					});
-
-					totalRetries = (attempt - 1) as RetryCount;
-					hooks?.onRetry?.(attempt as RetryCount, mapped, delay);
-					logger?.info?.(`Retrying in ${delay}ms (attempt ${attempt + 1})`);
-
-					await sleep(delay as number, compositeSignal);
-					return runAttempt(attempt + 1);
-				}
-			}
-
-			throw mapped;
+			hooks?.onFinally?.(metrics);
+			return {
+				type: kind,
+				ok: false,
+				data: null,
+				error: finalError,
+				metrics,
+			};
 		}
-	};
-
-	try {
-		const data = await runAttempt(1);
-		const metrics: ExecutionMetrics<E> = {
-			totalAttempts,
-			totalRetries,
-			totalDuration: (Date.now() - startTime) as Milliseconds,
-			retryHistory,
-		};
-		hooks?.onFinally?.(metrics);
-		return { type: 'success', ok: true, data, error: null, metrics };
-	} catch (err) {
-		const finalError = (lastError ?? (errorHandling.normalizer(err) as E)) as E;
-		const kind: 'failure' | 'timeout' | 'aborted' =
-			finalError.code === 'TIMEOUT'
-				? 'timeout'
-				: finalError.code === 'ABORTED'
-					? 'aborted'
-					: 'failure';
-
-		const metrics: ExecutionMetrics<E> = {
-			totalAttempts,
-			totalRetries,
-			totalDuration: (Date.now() - startTime) as Milliseconds,
-			lastError: finalError,
-			retryHistory,
-		};
-
-		hooks?.onFinally?.(metrics);
-		return {
-			type: kind,
-			ok: false,
-			data: null,
-			error: finalError,
-			metrics,
-		};
+	} finally {
+		cleanupCompositeSignal();
 	}
 }
 
-function createCompositeSignal(signal?: AbortSignal): AbortSignal {
+function createCompositeSignal(signal?: AbortSignal): {
+	signal: AbortSignal;
+	cleanup: () => void;
+} {
 	const controller = new AbortController();
-	if (!signal) return controller.signal;
+	if (!signal) {
+		return { signal: controller.signal, cleanup: () => {} };
+	}
+
 	const abort = () => controller.abort();
 	if (signal.aborted) {
 		abort();
-		return controller.signal;
+		return { signal: controller.signal, cleanup: () => {} };
 	}
+
 	signal.addEventListener('abort', abort, { once: true });
-	return controller.signal;
+	return {
+		signal: controller.signal,
+		cleanup: () => signal.removeEventListener('abort', abort),
+	};
 }
 
 async function withTimeout<T>(

@@ -1,6 +1,6 @@
 {
 	"name": "trybox",
-	"version": "0.10.1",
+	"version": "0.11.0",
 	"description": "Run sync/async functions and return a typed Result instead of throwing.",
 	"type": "module",
 	"sideEffects": false,
@@ -29,7 +29,8 @@
 		"docs:preview": "cd docs && mintlify preview",
 		"prepublishOnly": "npm run build",
 		"format": "biome format --write",
-		"lint": "biome lint --write",
+		"lint": "biome lint",
+		"lint:fix": "biome lint --fix",
 		"check": "biome check --write"
 	},
 	"devDependencies": {
