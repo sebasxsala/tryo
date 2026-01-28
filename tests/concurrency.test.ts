@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test';
 import { Executor } from '../src/core/executor';
-import { asConcurrencyLimit } from '../src/types/branded-types';
 import { sleep } from '../src/utils/timing';
 
 describe('Concurrency', () => {
@@ -20,7 +19,7 @@ describe('Concurrency', () => {
 				return i;
 			});
 
-		const concurrency = asConcurrencyLimit(2);
+		const concurrency = 2;
 		const results = await ex.executeAll(tasks, { concurrency });
 
 		const duration = Date.now() - start;

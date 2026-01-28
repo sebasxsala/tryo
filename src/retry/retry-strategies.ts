@@ -3,7 +3,7 @@
  * Provides various retry patterns with type safety
  */
 
-import type { Milliseconds, RetryCount } from '../types/branded-types';
+import type { RetryCount } from '../types/branded-types';
 
 // Modern retry strategy types
 export type RetryStrategy =
@@ -14,38 +14,38 @@ export type RetryStrategy =
 
 export interface FixedDelayStrategy {
 	readonly type: 'fixed';
-	readonly delay: Milliseconds;
+	readonly delay: number;
 }
 
 export interface ExponentialBackoffStrategy {
 	readonly type: 'exponential';
-	readonly base: Milliseconds;
+	readonly base: number;
 	readonly factor: number;
-	readonly maxDelay?: Milliseconds;
+	readonly maxDelay?: number;
 }
 
 export interface FibonacciBackoffStrategy {
 	readonly type: 'fibonacci';
-	readonly base: Milliseconds;
-	readonly maxDelay?: Milliseconds;
+	readonly base: number;
+	readonly maxDelay?: number;
 }
 
 export interface CustomDelayStrategy {
 	readonly type: 'custom';
-	readonly calculate: (attempt: RetryCount, error: unknown) => Milliseconds;
+	readonly calculate: (attempt: RetryCount, error: unknown) => number;
 }
 
 // Strategy factory functions
 export const RetryStrategies = {
-	fixed: (delay: Milliseconds): FixedDelayStrategy => ({
+	fixed: (delay: number): FixedDelayStrategy => ({
 		type: 'fixed',
 		delay,
 	}),
 
 	exponential: (
-		base: Milliseconds,
+		base: number,
 		factor: number = 2,
-		maxDelay?: Milliseconds,
+		maxDelay?: number,
 	): ExponentialBackoffStrategy => ({
 		type: 'exponential',
 		base,
@@ -53,17 +53,14 @@ export const RetryStrategies = {
 		maxDelay,
 	}),
 
-	fibonacci: (
-		base: Milliseconds,
-		maxDelay?: Milliseconds,
-	): FibonacciBackoffStrategy => ({
+	fibonacci: (base: number, maxDelay?: number): FibonacciBackoffStrategy => ({
 		type: 'fibonacci',
 		base,
 		maxDelay,
 	}),
 
 	custom: (
-		calculate: (attempt: RetryCount, error: unknown) => Milliseconds,
+		calculate: (attempt: RetryCount, error: unknown) => number,
 	): CustomDelayStrategy => ({
 		type: 'custom',
 		calculate,
@@ -75,7 +72,7 @@ export const calculateDelay = (
 	strategy: RetryStrategy,
 	attempt: RetryCount,
 	error: unknown,
-): Milliseconds => {
+): number => {
 	switch (strategy.type) {
 		case 'fixed': {
 			return strategy.delay;
@@ -84,14 +81,14 @@ export const calculateDelay = (
 			const expDelay = strategy.base * strategy.factor ** (Number(attempt) - 1);
 			return (
 				strategy.maxDelay ? Math.min(expDelay, strategy.maxDelay) : expDelay
-			) as Milliseconds;
+			) as number;
 		}
 
 		case 'fibonacci': {
 			const fibDelay = strategy.base * fibonacci(Number(attempt));
 			return (
 				strategy.maxDelay ? Math.min(fibDelay, strategy.maxDelay) : fibDelay
-			) as Milliseconds;
+			) as number;
 		}
 
 		case 'custom': {

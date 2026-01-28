@@ -32,18 +32,18 @@ if (result.ok) {
 
 ## Error Handling
 
-`trybox` normalizes all errors into a `ResultError` object with a stable `code`.
+`trybox` normalizes all errors into a `TypedError` instance with a stable `code`.
 
-### The `ResultError` Object
+### The `TypedError` Shape
 
-All errors are normalized to this structure:
+All errors are normalized to this shape:
 
 ```typescript
-type ResultError<Code extends string = string> = {
+type TypedError<Code extends string = string, Meta = unknown> = {
   code: Code; // Stable error code (e.g. "TIMEOUT", "HTTP")
   message: string; // Human-readable message
   cause?: unknown; // Original error
-  meta?: Record<string, any>; // Extra metadata (e.g. status code, validation errors)
+  meta?: Meta; // Extra metadata (optional)
   status?: number; // Optional HTTP status (if applicable)
 };
 ```
@@ -108,15 +108,21 @@ const runner = trybox({
 Executes a single function with retry and error handling.
 
 ```typescript
+import trybox, { RetryStrategies } from "trybox";
+
 await runner.run(fn, {
-  retries: 3,
-  retryDelay: (attempt) => attempt * 1000,
-  onSuccess: (data) => console.log("Success:", data),
-  onError: (err) => console.error("Error:", err),
+  retry: {
+    maxRetries: 3,
+    strategy: RetryStrategies.fixed(1000),
+  },
+  hooks: {
+    onSuccess: (data) => console.log("Success:", data),
+    onError: (err) => console.error("Error:", err),
+  },
 });
 ```
 
-### `runner.allSettled(tasks, options?)`
+### `runner.runAll(tasks, options?)`
 
 Executes multiple tasks with concurrency control. Returns all results (success or failure).
 
@@ -127,21 +133,20 @@ const tasks = [
   () => fetch("/api/3"),
 ];
 
-const results = await runner.allSettled(tasks, {
+const results = await runner.runAll(tasks, {
   concurrency: 2,
-  mode: "settle", // or "fail-fast"
 });
 ```
 
-### `runner.all(tasks, options?)`
+### `runner.runOrThrowAll(tasks, options?)`
 
 Like `Promise.all` but with concurrency control. Throws the first normalized error if any fails.
 
 ```typescript
 try {
-  const data = await runner.all(tasks, { concurrency: 5 });
+  const data = await runner.runOrThrowAll(tasks, { concurrency: 5 });
 } catch (err) {
-  // err is ResultError
+  // err is TypedError
   console.error(err.code);
 }
 ```

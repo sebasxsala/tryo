@@ -1,16 +1,15 @@
 import { describe, expect, it } from 'bun:test';
 
 import { Executor } from '../src/core/executor';
-import { asMilliseconds, asRetryCount } from '../src/types/branded-types';
 import { sleep } from '../src/utils/timing';
 
 describe('Circuit breaker: half-open', () => {
 	it('enforces halfOpenRequests limit', async () => {
 		const ex = new Executor({
 			circuitBreaker: {
-				failureThreshold: asRetryCount(1),
-				resetTimeout: asMilliseconds(20),
-				halfOpenRequests: asRetryCount(1),
+				failureThreshold: 1,
+				resetTimeout: 20,
+				halfOpenRequests: 1,
 			},
 		});
 
@@ -43,9 +42,9 @@ describe('Circuit breaker: half-open', () => {
 		const transitions: Array<{ from: string; to: string }> = [];
 		const ex = new Executor({
 			circuitBreaker: {
-				failureThreshold: asRetryCount(1),
-				resetTimeout: asMilliseconds(10),
-				halfOpenRequests: asRetryCount(1),
+				failureThreshold: 1,
+				resetTimeout: 10,
+				halfOpenRequests: 1,
 			},
 			hooks: {
 				onCircuitStateChange: (from, to) => transitions.push({ from, to }),

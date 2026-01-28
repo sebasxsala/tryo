@@ -47,6 +47,7 @@ describe('Error normalization', () => {
 		expect(r.ok).toBe(false);
 		if (!r.ok) {
 			expect(r.error.code).toBe('HTTP');
+			expect(r.error.status).toBe(500);
 		}
 	});
 });

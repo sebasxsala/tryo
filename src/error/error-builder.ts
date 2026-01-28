@@ -12,6 +12,12 @@ type StatusCarrier = {
 	message?: string;
 };
 
+type CodeCarrier = {
+	code?: string;
+	message?: string;
+	name?: string;
+};
+
 const hasNumericStatus = (err: unknown): err is StatusCarrier => {
 	if (typeof err !== 'object' || err === null) return false;
 	const candidate = err as StatusCarrier;
@@ -19,6 +25,35 @@ const hasNumericStatus = (err: unknown): err is StatusCarrier => {
 		typeof candidate.status === 'number' ||
 		typeof candidate.statusCode === 'number'
 	);
+};
+
+const hasStringCode = (err: unknown): err is CodeCarrier => {
+	if (typeof err !== 'object' || err === null) return false;
+	const candidate = err as CodeCarrier;
+	return typeof candidate.code === 'string' && candidate.code.length > 0;
+};
+
+const isNetworkish = (err: unknown): err is Error | CodeCarrier => {
+	if (err instanceof Error) {
+		// Common fetch/network errors in browsers/Bun/Node.
+		if (err.name === 'TypeError') return true;
+		const msg = err.message.toLowerCase();
+		if (msg.includes('fetch') && msg.includes('failed')) return true;
+		if (msg.includes('network')) return true;
+	}
+
+	if (hasStringCode(err)) {
+		const code = (err.code ?? '').toUpperCase();
+		return (
+			code === 'ECONNRESET' ||
+			code === 'ECONNREFUSED' ||
+			code === 'ETIMEDOUT' ||
+			code === 'ENOTFOUND' ||
+			code === 'EAI_AGAIN'
+		);
+	}
+
+	return false;
 };
 
 // Modern error rule builder with enhanced ergonomics
@@ -206,13 +241,15 @@ export const BuiltinRules = {
 
 	// Network errors
 	network: createErrorRule
-		.when((err): err is StatusCarrier => hasNumericStatus(err))
+		.when((err): err is Error | CodeCarrier => isNetworkish(err))
 		.toCode('NETWORK')
 		.with((err) => {
-			const status = err.status ?? err.statusCode;
+			const message =
+				err instanceof Error
+					? err.message || 'Network error'
+					: err.message || 'Network error';
 			return {
-				message:
-					err.message || `Network error with status ${status ?? 'unknown'}`,
+				message,
 				cause: err,
 			};
 		}),
@@ -233,6 +270,7 @@ export const BuiltinRules = {
 			return {
 				message: err.message || `HTTP ${status ?? 'error'} error`,
 				cause: err,
+				status: typeof status === 'number' ? status : undefined,
 			};
 		}),
 

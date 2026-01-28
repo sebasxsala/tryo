@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { ExecutorOptions } from '../src/core/executor';
 import { Executor } from '../src/core/executor';
-import { asMilliseconds, asRetryCount } from '../src/types/branded-types';
 import { sleep } from '../src/utils/timing';
 
 const make = (opts: ExecutorOptions = {}) => new Executor(opts);
@@ -40,7 +39,7 @@ describe('run: timeout', () => {
 				await sleep(50);
 				return 'done';
 			},
-			{ timeout: asMilliseconds(10) },
+			{ timeout: 10 },
 		);
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.code).toBe('TIMEOUT');
@@ -84,15 +83,29 @@ describe('run: abort metrics', () => {
 	it('counts attempt when aborted during run', async () => {
 		const ex = make();
 		const controller = new AbortController();
-		await ex.execute(
-			async () => {
-				await sleep(10);
+
+		let startedResolve: (() => void) | undefined;
+		const started = new Promise<void>((res) => {
+			startedResolve = res;
+		});
+
+		const p = ex.execute(
+			async ({ signal }) => {
+				startedResolve?.();
+				await sleep(50, signal);
 				return 1;
 			},
 			{ signal: controller.signal, ignoreAbort: true },
 		);
-		// Abort from outside is hard to time perfectly to be "during" run without sleep
-		// But we can abort immediately
+
+		await started;
+		controller.abort();
+		const r = await p;
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('ABORTED');
+			expect(Number(r.metrics?.totalAttempts)).toBe(1);
+		}
 	});
 
 	it('reports correct attempts on timeout', async () => {
@@ -102,7 +115,7 @@ describe('run: abort metrics', () => {
 				await sleep(20);
 				return 1;
 			},
-			{ timeout: asMilliseconds(5) },
+			{ timeout: 5 },
 		);
 		expect(r.ok).toBe(false);
 		expect(Number(r.metrics?.totalAttempts)).toBe(1);
@@ -113,9 +126,9 @@ describe('runner: circuit breaker', () => {
 	it('opens after threshold and short-circuits with CIRCUIT_OPEN', async () => {
 		const ex = make({
 			circuitBreaker: {
-				failureThreshold: asRetryCount(2),
-				resetTimeout: asMilliseconds(50),
-				halfOpenRequests: asRetryCount(1),
+				failureThreshold: 2,
+				resetTimeout: 50,
+				halfOpenRequests: 1,
 			},
 		});
 		const fail = async () => {
@@ -145,5 +158,75 @@ describe('runner: circuit breaker', () => {
 		// Should not be open yet (threshold 2)
 		const r6 = await ex.execute(async () => 42);
 		expect(r6.ok).toBe(true);
+	});
+});
+
+describe('observability safety', () => {
+	it('does not fail when onSuccess throws', async () => {
+		const ex = make({
+			hooks: {
+				onSuccess: () => {
+					throw new Error('hook broke');
+				},
+			},
+		});
+
+		const r = await ex.execute(async () => 1);
+		expect(r.ok).toBe(true);
+		if (r.ok) expect(r.data).toBe(1);
+	});
+
+	it('does not throw or mask the task error when onError throws', async () => {
+		const ex = make({
+			hooks: {
+				onError: () => {
+					throw new Error('hook broke');
+				},
+			},
+		});
+
+		const r = await ex.execute(async () => {
+			throw new Error('boom');
+		});
+
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('UNKNOWN');
+			expect(r.error.message).toBe('boom');
+		}
+	});
+
+	it('does not throw when onFinally throws', async () => {
+		const ex = make({
+			hooks: {
+				onFinally: () => {
+					throw new Error('hook broke');
+				},
+			},
+		});
+
+		const r = await ex.execute(async () => 1);
+		expect(r.ok).toBe(true);
+	});
+
+	it('does not throw when logger callbacks throw', async () => {
+		const ex = make({
+			logger: {
+				info: () => {
+					throw new Error('logger broke');
+				},
+				error: () => {
+					throw new Error('logger broke');
+				},
+			},
+		});
+
+		const r1 = await ex.execute(async () => 1);
+		expect(r1.ok).toBe(true);
+
+		const r2 = await ex.execute(async () => {
+			throw new Error('boom');
+		});
+		expect(r2.ok).toBe(false);
 	});
 });

@@ -7,12 +7,6 @@ import type { CircuitBreakerConfig } from '../circuit-breaker/breaker-config';
 import type { ErrorNormalizer } from '../error/error-normalizer';
 import type { TypedError } from '../error/typed-error';
 import type { RetryStrategy } from '../retry/retry-strategies';
-import type {
-	ConcurrencyLimit,
-	Milliseconds,
-	Percentage,
-	RetryCount,
-} from './branded-types';
 
 // Main execution configuration
 export interface ExecutionConfig<E extends TypedError = TypedError> {
@@ -23,7 +17,7 @@ export interface ExecutionConfig<E extends TypedError = TypedError> {
 	readonly ignoreAbort?: boolean;
 
 	/** Timeout configuration */
-	readonly timeout?: Milliseconds;
+	readonly timeout?: number;
 
 	/** Retry configuration */
 	readonly retry?: RetryConfig<E>;
@@ -35,7 +29,7 @@ export interface ExecutionConfig<E extends TypedError = TypedError> {
 	readonly errorHandling: ErrorHandlingConfig<E>;
 
 	/** Concurrency configuration for batch operations */
-	readonly concurrency?: ConcurrencyLimit;
+	readonly concurrency?: number;
 
 	/** Logging configuration */
 	readonly logger?: LoggerConfig<E>;
@@ -47,7 +41,7 @@ export interface ExecutionConfig<E extends TypedError = TypedError> {
 // Retry configuration
 export interface RetryConfig<E extends TypedError> {
 	/** Maximum number of retry attempts */
-	readonly maxRetries: RetryCount;
+	readonly maxRetries: number;
 
 	/** Base delay strategy */
 	readonly strategy: RetryStrategy;
@@ -62,13 +56,13 @@ export interface RetryConfig<E extends TypedError> {
 // Jitter configuration
 export type JitterConfig =
 	| { type: 'none' }
-	| { type: 'full'; ratio: Percentage }
-	| { type: 'equal'; ratio: Percentage }
-	| { type: 'custom'; calculate: (delay: Milliseconds) => Milliseconds };
+	| { type: 'full'; ratio: number }
+	| { type: 'equal'; ratio: number }
+	| { type: 'custom'; calculate: (delay: number) => number };
 
 // Type for retry predicate function
 export type ShouldRetryPredicate<E extends TypedError> = (
-	attempt: RetryCount,
+	attempt: number,
 	error: E,
 	context: RetryContext,
 ) => boolean;
@@ -76,16 +70,16 @@ export type ShouldRetryPredicate<E extends TypedError> = (
 // Retry context information
 export interface RetryContext {
 	/** Total attempts made so far */
-	readonly totalAttempts: RetryCount;
+	readonly totalAttempts: number;
 
 	/** Elapsed time since start */
-	readonly elapsedTime: Milliseconds;
+	readonly elapsedTime: number;
 
 	/** Start timestamp */
 	readonly startTime: Date;
 
 	/** Last delay applied */
-	readonly lastDelay?: Milliseconds;
+	readonly lastDelay?: number;
 }
 
 // Error handling configuration
@@ -127,11 +121,7 @@ export interface HookConfig<E extends TypedError> {
 	readonly onAbort?: (signal: AbortSignal) => void;
 
 	/** Called before retry attempt */
-	readonly onRetry?: (
-		attempt: RetryCount,
-		error: E,
-		delay: Milliseconds,
-	) => void;
+	readonly onRetry?: (attempt: number, error: E, delay: number) => void;
 
 	/** Called when circuit breaker state changes */
 	readonly onCircuitStateChange?: (
@@ -163,17 +153,17 @@ export const createExecutionConfig = <E extends TypedError>(
 export const JitterConfig = {
 	none: (): JitterConfig => ({ type: 'none' }),
 
-	full: (ratio: Percentage = 50 as Percentage): JitterConfig => ({
+	full: (ratio: number = 50): JitterConfig => ({
 		type: 'full',
 		ratio,
 	}),
 
-	equal: (ratio: Percentage = 50 as Percentage): JitterConfig => ({
+	equal: (ratio: number = 50): JitterConfig => ({
 		type: 'equal',
 		ratio,
 	}),
 
-	custom: (calculate: (delay: Milliseconds) => Milliseconds): JitterConfig => ({
+	custom: (calculate: (delay: number) => number): JitterConfig => ({
 		type: 'custom',
 		calculate,
 	}),

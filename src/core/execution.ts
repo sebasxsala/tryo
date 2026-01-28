@@ -1,6 +1,9 @@
 /**
- * Thin functional facade over a singleton Executor.
- * No business logic lives here; it forwards to `src/core/executor.ts`.
+ * @deprecated
+ * Internal-only legacy facade (kept for back-compat inside the repo).
+ *
+ * This module is NOT exported from the package public API.
+ * Consumers should use the default export from `src/index.ts` (trybox factory).
  */
 
 import type { TypedError } from '../error/typed-error';

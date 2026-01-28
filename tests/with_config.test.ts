@@ -2,7 +2,6 @@ import { describe, expect, it } from 'bun:test';
 
 import { Executor } from '../src/core/executor';
 import { errorRule } from '../src/error/error-rules';
-import { asMilliseconds } from '../src/types/branded-types';
 
 describe('Executor.withConfig', () => {
 	it('preserves existing error normalization by default', async () => {
@@ -17,7 +16,7 @@ describe('Executor.withConfig', () => {
 			],
 		});
 
-		const derived = ex.withConfig({ timeout: asMilliseconds(1) });
+		const derived = ex.withConfig({ timeout: 1 });
 		const r = await derived.execute(async () => {
 			throw 'custom';
 		});

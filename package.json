@@ -11,13 +11,13 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
-			"require": "./dist/index.cjs",
-		},
+			"require": "./dist/index.cjs"
+		}
 	},
 	"files": [
 		"dist",
 		"README.md",
-		"LICENSE",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsup",
@@ -31,20 +31,20 @@
 		"format": "biome format --write",
 		"lint": "biome lint",
 		"lint:fix": "biome lint --fix",
-		"check": "biome check --write",
+		"check": "biome check --write"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.13",
 		"@types/bun": "latest",
 		"mint": "latest",
 		"tsup": "^8.5.1",
-		"typescript": "^5.0.0",
+		"typescript": "^5.0.0"
 	},
 	"license": "MIT",
 	"homepage": "https://trybox-docs.pages.dev/",
 	"bugs": "https://github.com/sebasxsala/trybox/issues",
 	"author": {
 		"name": "sebasxsala",
-		"url": "https://github.com/sebasxsala",
-	},
+		"url": "https://github.com/sebasxsala"
+	}
 }

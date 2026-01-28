@@ -41,14 +41,51 @@ export const sleep = (
 // Enhanced timeout with promise race
 export const withTimeout = <T>(
 	promise: Promise<T>,
-	timeoutMs: Milliseconds,
+	timeoutMs: number,
 	signal?: AbortSignal,
 ): Promise<T> => {
-	const timeoutPromise = sleep(timeoutMs, signal).then(() => {
-		throw new Error(`Operation timed out after ${timeoutMs}ms`);
-	});
+	return new Promise<T>((resolve, reject) => {
+		if (signal?.aborted) {
+			reject(new DOMException('Aborted', 'AbortError'));
+			return;
+		}
 
-	return Promise.race([promise, timeoutPromise]);
+		let settled = false;
+		const timeoutId = setTimeout(() => {
+			settled = true;
+			cleanup();
+			reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+
+		const onAbort = () => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			reject(new DOMException('Aborted', 'AbortError'));
+		};
+
+		const cleanup = () => {
+			clearTimeout(timeoutId);
+			signal?.removeEventListener('abort', onAbort);
+		};
+
+		signal?.addEventListener('abort', onAbort, { once: true });
+
+		promise.then(
+			(value) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				resolve(value);
+			},
+			(error) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				reject(error);
+			},
+		);
+	});
 };
 
 // Debounce function with type safety

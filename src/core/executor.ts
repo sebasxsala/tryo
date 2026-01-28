@@ -21,8 +21,14 @@ import {
 	type ValidationError,
 } from '../error/typed-error';
 import { calculateDelay } from '../retry/retry-strategies';
-import type { Milliseconds, RetryCount } from '../types/branded-types';
-import type { ExecutionConfig } from '../types/config-types';
+import {
+	asConcurrencyLimit,
+	asMilliseconds,
+	asRetryCount,
+	type Milliseconds,
+	type RetryCount,
+} from '../types/branded-types';
+import type { ExecutionConfig, JitterConfig } from '../types/config-types';
 import type { ExecutionMetrics, ExecutionResult } from '../types/result-types';
 import { sleep } from '../utils/timing';
 
@@ -129,7 +135,11 @@ export class Executor<E extends TypedError = TypedError> {
 			const canExecute = await this.circuitBreaker.canExecute();
 			const after = this.circuitBreaker.getState().state;
 			if (before !== after) {
-				mergedConfig.hooks?.onCircuitStateChange?.(before, after);
+				try {
+					mergedConfig.hooks?.onCircuitStateChange?.(before, after);
+				} catch {
+					// Hooks must never affect control flow.
+				}
 			}
 			this.lastCircuitState = after;
 			if (!canExecute) {
@@ -165,7 +175,11 @@ export class Executor<E extends TypedError = TypedError> {
 			}
 			const after = this.circuitBreaker.getState().state;
 			if (before !== after) {
-				mergedConfig.hooks?.onCircuitStateChange?.(before, after);
+				try {
+					mergedConfig.hooks?.onCircuitStateChange?.(before, after);
+				} catch {
+					// Hooks must never affect control flow.
+				}
 			}
 			this.lastCircuitState = after;
 		}
@@ -188,7 +202,10 @@ export class Executor<E extends TypedError = TypedError> {
 		options: Partial<ExecutionConfig<E> & { concurrency?: number }> = {},
 	): Promise<ExecutionResult<T, E>[]> {
 		const mergedConfig = { ...this.config, ...options };
-		const concurrency = mergedConfig.concurrency ?? Number.POSITIVE_INFINITY;
+		const rawConcurrency = mergedConfig.concurrency ?? Number.POSITIVE_INFINITY;
+		const concurrency = Number.isFinite(rawConcurrency)
+			? Number(asConcurrencyLimit(rawConcurrency))
+			: Number.POSITIVE_INFINITY;
 
 		const out: ExecutionResult<T, E>[] = new Array(tasks.length);
 		let idx = 0;
@@ -299,6 +316,17 @@ async function executeInternal<T, E extends TypedError>(
 		logger,
 	} = config;
 
+	const safeCall = (
+		fn: ((...args: unknown[]) => unknown) | undefined,
+		...args: unknown[]
+	) => {
+		try {
+			fn?.(...args);
+		} catch {
+			// Observability must never affect control flow.
+		}
+	};
+
 	let lastError: E | undefined;
 	let totalAttempts = 0 as RetryCount;
 	let totalRetries = 0 as RetryCount;
@@ -315,7 +343,10 @@ async function executeInternal<T, E extends TypedError>(
 
 	try {
 		if (compositeSignal.aborted) {
-			hooks?.onAbort?.(compositeSignal);
+			safeCall(
+				hooks?.onAbort as unknown as (...a: unknown[]) => unknown,
+				compositeSignal,
+			);
 			// normalize abort immediately
 			const e = errorHandling.normalizer(
 				new DOMException('Aborted', 'AbortError'),
@@ -343,8 +374,14 @@ async function executeInternal<T, E extends TypedError>(
 				const data = timeout
 					? await withTimeout(p, timeout, compositeSignal)
 					: await p;
-				hooks?.onSuccess?.(data);
-				logger?.info?.(`Task succeeded on attempt ${attempt}`);
+				safeCall(
+					hooks?.onSuccess as unknown as (...a: unknown[]) => unknown,
+					data,
+				);
+				safeCall(
+					logger?.info as unknown as (...a: unknown[]) => unknown,
+					`Task succeeded on attempt ${attempt}`,
+				);
 				return data;
 			} catch (err) {
 				const norm = errorHandling.normalizer(err);
@@ -353,31 +390,42 @@ async function executeInternal<T, E extends TypedError>(
 					: norm;
 				lastError = mapped;
 				if (mapped.code === 'ABORTED') {
-					hooks?.onAbort?.(compositeSignal);
+					safeCall(
+						hooks?.onAbort as unknown as (...a: unknown[]) => unknown,
+						compositeSignal,
+					);
 				}
 
 				if (!(ignoreAbort && mapped.code === 'ABORTED')) {
-					hooks?.onError?.(mapped);
-					logger?.error?.(`Task failed on attempt ${attempt}`, mapped);
+					safeCall(
+						hooks?.onError as unknown as (...a: unknown[]) => unknown,
+						mapped,
+					);
+					safeCall(
+						logger?.error as unknown as (...a: unknown[]) => unknown,
+						`Task failed on attempt ${attempt}`,
+						mapped,
+					);
 				}
 
-				if (attempt <= (retry?.maxRetries ?? (0 as RetryCount))) {
+				const maxRetries = asRetryCount(retry?.maxRetries ?? 0);
+				if (attempt <= Number(maxRetries)) {
 					const shouldRetry = retry?.shouldRetry;
 					const ctx = {
-						totalAttempts: totalAttempts,
-						elapsedTime: (Date.now() - startTime) as Milliseconds,
+						totalAttempts: Number(totalAttempts) as unknown as number,
+						elapsedTime: (Date.now() - startTime) as number,
 						startTime: new Date(startTime),
-						lastDelay: retryHistory[retryHistory.length - 1]?.delay,
+						lastDelay: retryHistory[retryHistory.length - 1]?.delay
+							? Number(retryHistory[retryHistory.length - 1]?.delay)
+							: undefined,
 					};
 
-					if (!shouldRetry || shouldRetry(attempt as RetryCount, mapped, ctx)) {
-						const delay = retry
-							? (calculateDelay(
-									retry.strategy,
-									attempt as RetryCount,
-									mapped,
-								) as Milliseconds)
-							: (0 as Milliseconds);
+					if (!shouldRetry || shouldRetry(attempt, mapped, ctx)) {
+						const baseDelayMs = retry
+							? calculateDelay(retry.strategy, attempt as RetryCount, mapped)
+							: 0;
+						const delayMs = applyJitter(baseDelayMs, retry?.jitter);
+						const delay = asMilliseconds(delayMs);
 
 						retryHistory.push({
 							attempt: attempt as RetryCount,
@@ -385,8 +433,16 @@ async function executeInternal<T, E extends TypedError>(
 							delay,
 							timestamp: new Date(),
 						});
-						hooks?.onRetry?.(attempt as RetryCount, mapped, delay);
-						logger?.info?.(`Retrying in ${delay}ms (attempt ${attempt + 1})`);
+						safeCall(
+							hooks?.onRetry as unknown as (...a: unknown[]) => unknown,
+							attempt,
+							mapped,
+							delayMs,
+						);
+						safeCall(
+							logger?.info as unknown as (...a: unknown[]) => unknown,
+							`Retrying in ${delayMs}ms (attempt ${attempt + 1})`,
+						);
 
 						await sleep(delay as number, compositeSignal);
 						return runAttempt(attempt + 1);
@@ -409,7 +465,10 @@ async function executeInternal<T, E extends TypedError>(
 				totalDuration: (Date.now() - startTime) as Milliseconds,
 				retryHistory,
 			};
-			hooks?.onFinally?.(metrics);
+			safeCall(
+				hooks?.onFinally as unknown as (...a: unknown[]) => unknown,
+				metrics,
+			);
 			return { type: 'success', ok: true, data, error: null, metrics };
 		} catch (err) {
 			const finalError = (lastError ??
@@ -434,7 +493,10 @@ async function executeInternal<T, E extends TypedError>(
 				retryHistory,
 			};
 
-			hooks?.onFinally?.(metrics);
+			safeCall(
+				hooks?.onFinally as unknown as (...a: unknown[]) => unknown,
+				metrics,
+			);
 			return {
 				type: kind,
 				ok: false,
@@ -472,11 +534,76 @@ function createCompositeSignal(signal?: AbortSignal): {
 
 async function withTimeout<T>(
 	promise: Promise<T>,
-	timeout: Milliseconds,
+	timeoutMs: number,
 	signal?: AbortSignal,
 ): Promise<T> {
-	const timeoutPromise = sleep(timeout as number, signal).then(() => {
-		throw new TimeoutError(timeout);
+	return new Promise<T>((resolve, reject) => {
+		if (signal?.aborted) {
+			reject(new DOMException('Aborted', 'AbortError'));
+			return;
+		}
+
+		let settled = false;
+		const timeoutId = setTimeout(() => {
+			settled = true;
+			cleanup();
+			reject(new TimeoutError(asMilliseconds(timeoutMs)));
+		}, timeoutMs);
+
+		const onAbort = () => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			reject(new DOMException('Aborted', 'AbortError'));
+		};
+
+		const cleanup = () => {
+			clearTimeout(timeoutId);
+			signal?.removeEventListener('abort', onAbort);
+		};
+
+		signal?.addEventListener('abort', onAbort, { once: true });
+
+		promise.then(
+			(value) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				resolve(value);
+			},
+			(error) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				reject(error);
+			},
+		);
 	});
-	return Promise.race([promise, timeoutPromise]);
+}
+
+function applyJitter(delayMs: number, jitter?: JitterConfig): number {
+	if (!jitter || jitter.type === 'none') return delayMs;
+	if (delayMs <= 0) return delayMs;
+
+	switch (jitter.type) {
+		case 'full': {
+			const ratio = Number(jitter.ratio) / 100;
+			const min = Math.max(0, Number(delayMs) * (1 - ratio));
+			const max = Number(delayMs);
+			return (min + Math.random() * (max - min)) as number;
+		}
+		case 'equal': {
+			const ratio = Number(jitter.ratio) / 100;
+			const halfWindow = (Number(delayMs) * ratio) / 2;
+			const base = Number(delayMs) - halfWindow;
+			return (base + Math.random() * halfWindow) as number;
+		}
+		case 'custom': {
+			return jitter.calculate(delayMs);
+		}
+		default: {
+			const _exhaustive: never = jitter;
+			return _exhaustive;
+		}
+	}
 }

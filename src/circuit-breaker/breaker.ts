@@ -4,18 +4,23 @@
  */
 
 import { CircuitOpenError, type TypedError } from '../error/typed-error';
-import type { Milliseconds, RetryCount } from '../types/branded-types';
+import {
+	asMilliseconds,
+	asRetryCount,
+	type Milliseconds,
+	type RetryCount,
+} from '../types/branded-types';
 
 // Circuit breaker configuration
 export interface CircuitBreakerConfig<E extends TypedError = TypedError> {
 	/** Number of consecutive failures before opening circuit */
-	readonly failureThreshold: RetryCount;
+	readonly failureThreshold: number;
 
 	/** How long to wait before attempting to close circuit */
-	readonly resetTimeout: Milliseconds;
+	readonly resetTimeout: number;
 
 	/** Number of requests allowed in half-open state */
-	readonly halfOpenRequests: RetryCount;
+	readonly halfOpenRequests: number;
 
 	/** Optional function to determine if error should count as failure */
 	readonly shouldCountAsFailure?: (error: E) => boolean;
@@ -36,10 +41,20 @@ interface CircuitBreakerInternalState {
 // Modern circuit breaker implementation
 export class CircuitBreaker<E extends TypedError = TypedError> {
 	private state: CircuitBreakerInternalState;
-	private readonly config: CircuitBreakerConfig<E>;
+	private readonly config: {
+		failureThreshold: RetryCount;
+		resetTimeout: Milliseconds;
+		halfOpenRequests: RetryCount;
+		shouldCountAsFailure?: (error: E) => boolean;
+	};
 
 	constructor(config: CircuitBreakerConfig<E>) {
-		this.config = config;
+		this.config = {
+			failureThreshold: asRetryCount(config.failureThreshold),
+			resetTimeout: asMilliseconds(config.resetTimeout),
+			halfOpenRequests: asRetryCount(config.halfOpenRequests),
+			shouldCountAsFailure: config.shouldCountAsFailure,
+		};
 		this.state = {
 			state: 'closed',
 			failureCount: 0 as RetryCount,
@@ -159,7 +174,9 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 	// Create error for when circuit is open
 	createOpenError(): CircuitOpenError {
 		const resetAfter = this.state.nextAttemptTime
-			? ((this.state.nextAttemptTime.getTime() - Date.now()) as Milliseconds)
+			? asMilliseconds(
+					Math.max(0, this.state.nextAttemptTime.getTime() - Date.now()),
+				)
 			: this.config.resetTimeout;
 
 		return new CircuitOpenError(resetAfter);

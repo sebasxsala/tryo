@@ -2,15 +2,14 @@ import { describe, expect, it } from 'bun:test';
 
 import { Executor } from '../src/core/executor';
 import { RetryStrategies } from '../src/retry/retry-strategies';
-import { asMilliseconds, asRetryCount } from '../src/types/branded-types';
 
 describe('Retry behavior and metrics', () => {
 	it('counts retries correctly when it succeeds after retries', async () => {
 		let calls = 0;
 		const ex = new Executor({
 			retry: {
-				maxRetries: asRetryCount(2),
-				strategy: RetryStrategies.fixed(asMilliseconds(0)),
+				maxRetries: 2,
+				strategy: RetryStrategies.fixed(0),
 			},
 		});
 
@@ -34,8 +33,8 @@ describe('Retry behavior and metrics', () => {
 	it('counts retries correctly when it fails after maxRetries', async () => {
 		const ex = new Executor({
 			retry: {
-				maxRetries: asRetryCount(1),
-				strategy: RetryStrategies.fixed(asMilliseconds(0)),
+				maxRetries: 1,
+				strategy: RetryStrategies.fixed(0),
 			},
 		});
 
