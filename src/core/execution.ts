@@ -1,51 +1,137 @@
 /**
- * @deprecated
- * Internal-only legacy facade (kept for back-compat inside the repo).
- *
- * This module is NOT exported from the package public API.
- * Consumers should use the default export from `src/index.ts` (trybox factory).
+ * Internal execution facade used by the public API.
  */
 
+import type { ErrorRule } from '../error/error-normalizer';
 import type { TypedError } from '../error/typed-error';
 import type { ExecutionConfig } from '../types/config-types';
-import { Executor, type ExecutorOptions } from './executor';
+import type { ExecutionResult } from '../types/result-types';
+import {
+	createExecutor,
+	type DefaultError,
+	type ExecutorOptions,
+	type InferErrorFromRules,
+} from './executor';
 
-let singleton: Executor<TypedError> | undefined;
-
-export const getExecutor = <E extends TypedError = TypedError>(
-	options?: ExecutorOptions<E>,
-): Executor<E> => {
-	if (!options) {
-		if (!singleton) singleton = new Executor();
-		return singleton as unknown as Executor<E>;
-	}
-	return new Executor<E>(options);
+export type Runner<E extends TypedError = TypedError> = {
+	run: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<ExecutionConfig<E>>,
+	) => Promise<ExecutionResult<T, E>>;
+	execute: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<ExecutionConfig<E>>,
+	) => Promise<ExecutionResult<T, E>>;
+	runOrThrow: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<ExecutionConfig<E>>,
+	) => Promise<T>;
+	executeOrThrow: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<ExecutionConfig<E>>,
+	) => Promise<T>;
+	runAll: <T>(
+		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
+		options?: Partial<ExecutionConfig<E> & { concurrency?: number }>,
+	) => Promise<Array<ExecutionResult<T, E>>>;
+	executeAll: <T>(
+		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
+		options?: Partial<ExecutionConfig<E> & { concurrency?: number }>,
+	) => Promise<Array<ExecutionResult<T, E>>>;
+	runOrThrowAll: <T>(
+		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
+		options?: Partial<ExecutionConfig<E> & { concurrency?: number }>,
+	) => Promise<T[]>;
+	executeOrThrowAll: <T>(
+		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
+		options?: Partial<ExecutionConfig<E> & { concurrency?: number }>,
+	) => Promise<T[]>;
 };
 
-export async function execute<T, E extends TypedError = TypedError>(
+export function trybox<const TRules extends readonly ErrorRule<TypedError>[]>(
+	options: Omit<ExecutorOptions<InferErrorFromRules<TRules>>, 'rules'> & {
+		rules: TRules;
+	},
+): Runner<InferErrorFromRules<TRules>>;
+export function trybox<E extends TypedError = DefaultError>(
+	options?: ExecutorOptions<E>,
+): Runner<E>;
+export function trybox<E extends TypedError = DefaultError>(
+	options?: ExecutorOptions<E>,
+): Runner<E> {
+	const ex = createExecutor<E>(options);
+
+	return {
+		run: (task, runOptions) => ex.execute(task, runOptions),
+		execute: (task, runOptions) => ex.execute(task, runOptions),
+		runOrThrow: (task, runOptions) => ex.executeOrThrow(task, runOptions),
+		executeOrThrow: (task, runOptions) => ex.executeOrThrow(task, runOptions),
+		runAll: (tasks, runOptions) => ex.executeAll(tasks, runOptions),
+		executeAll: (tasks, runOptions) => ex.executeAll(tasks, runOptions),
+		runOrThrowAll: (tasks, runOptions) =>
+			ex.executeAllOrThrow(tasks, runOptions),
+		executeOrThrowAll: (tasks, runOptions) =>
+			ex.executeAllOrThrow(tasks, runOptions),
+	};
+}
+
+let singleton: ReturnType<typeof createExecutor> | undefined;
+const getSingletonExecutor = () => {
+	if (!singleton) singleton = createExecutor();
+	return singleton;
+};
+
+export function execute<T, E extends TypedError = DefaultError>(
 	task: (ctx: { signal: AbortSignal }) => Promise<T>,
 	options?: Partial<ExecutionConfig<E>>,
 ) {
-	return getExecutor<E>().execute(task, options);
+	return getSingletonExecutor().execute(
+		task,
+		options as Partial<ExecutionConfig>,
+	);
 }
 
-export async function executeOrThrow<T, E extends TypedError = TypedError>(
+export function executeOrThrow<T, E extends TypedError = DefaultError>(
 	task: (ctx: { signal: AbortSignal }) => Promise<T>,
 	options?: Partial<ExecutionConfig<E>>,
 ) {
-	return getExecutor<E>().executeOrThrow(task, options);
+	return getSingletonExecutor().executeOrThrow(
+		task,
+		options as Partial<ExecutionConfig>,
+	);
 }
 
-export async function executeAll<T, E extends TypedError = TypedError>(
+export function executeAll<T, E extends TypedError = DefaultError>(
 	tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
 	options?: Partial<ExecutionConfig<E> & { concurrency?: number }>,
 ) {
-	return getExecutor<E>().executeAll(tasks, options);
+	return getSingletonExecutor().executeAll(
+		tasks,
+		options as Partial<ExecutionConfig & { concurrency?: number }>,
+	);
 }
 
-export async function executeAllOrThrow<T, E extends TypedError = TypedError>(
+export function executeAllOrThrow<T, E extends TypedError = DefaultError>(
 	tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
 	options?: Partial<ExecutionConfig<E> & { concurrency?: number }>,
 ) {
-	return getExecutor<E>().executeAllOrThrow(tasks, options);
+	return getSingletonExecutor().executeAllOrThrow(
+		tasks,
+		options as Partial<ExecutionConfig & { concurrency?: number }>,
+	);
+}
+
+export const executeOrThrowAll = executeAllOrThrow;
+
+export const run = execute;
+export const runOrThrow = executeOrThrow;
+export const runAll = executeAll;
+export const runOrThrowAll = executeAllOrThrow;
+
+export function partitionAll<T, E extends TypedError = DefaultError>(
+	results: ExecutionResult<T, E>[],
+) {
+	return getSingletonExecutor().partitionAll(
+		results as ExecutionResult<T, E>[],
+	);
 }

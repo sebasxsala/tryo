@@ -15,6 +15,11 @@
 			"language_servers": ["biome"],
 			"formatter": "language_server",
 			"format_on_save": "on"
+		},
+		"JSONC": {
+			"language_servers": ["biome"],
+			"formatter": "language_server",
+			"format_on_save": "on"
 		}
 	}
 }

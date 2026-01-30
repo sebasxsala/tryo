@@ -29,7 +29,14 @@ import {
 	type RetryCount,
 } from '../types/branded-types';
 import type { ExecutionConfig, JitterConfig } from '../types/config-types';
-import type { ExecutionMetrics, ExecutionResult } from '../types/result-types';
+import type {
+	AbortedResult,
+	ExecutionMetrics,
+	ExecutionResult,
+	FailureResult,
+	SuccessResult,
+	TimeoutResult,
+} from '../types/result-types';
 import { sleep } from '../utils/timing';
 
 // Modern executor with enhanced capabilities
@@ -243,6 +250,44 @@ export class Executor<E extends TypedError = TypedError> {
 			if (!r.ok) throw r.error;
 			return r.data;
 		});
+	}
+
+	partitionAll<T>(results: Array<ExecutionResult<T, E>>): {
+		ok: Array<SuccessResult<T, E>>;
+		errors: Array<FailureResult<E> | AbortedResult<E> | TimeoutResult<E>>;
+		failure: Array<FailureResult<E>>;
+		aborted: Array<AbortedResult<E>>;
+		timeout: Array<TimeoutResult<E>>;
+	} {
+		const ok: Array<SuccessResult<T, E>> = [];
+		const errors: Array<
+			FailureResult<E> | AbortedResult<E> | TimeoutResult<E>
+		> = [];
+		const failure: Array<FailureResult<E>> = [];
+		const aborted: Array<AbortedResult<E>> = [];
+		const timeout: Array<TimeoutResult<E>> = [];
+
+		for (const r of results) {
+			if (r.type === 'success') {
+				ok.push(r);
+				continue;
+			}
+
+			errors.push(r);
+			switch (r.type) {
+				case 'failure':
+					failure.push(r);
+					break;
+				case 'aborted':
+					aborted.push(r);
+					break;
+				case 'timeout':
+					timeout.push(r);
+					break;
+			}
+		}
+
+		return { ok, errors, failure, aborted, timeout };
 	}
 
 	// (additional helpers removed; prefer compose outside)
