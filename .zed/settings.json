@@ -2,24 +2,56 @@
 	"format_on_save": "on",
 	"languages": {
 		"TypeScript": {
-			"language_servers": ["biome", "vtsls"],
-			"formatter": "language_server",
-			"format_on_save": "on"
+			"formatter": [
+				{
+					"language_server": {
+						"name": "biome"
+					}
+				}
+			],
+			"format_on_save": "on",
+			"prettier": {
+				"allowed": false
+			}
 		},
 		"JavaScript": {
-			"language_servers": ["biome", "vtsls"],
-			"formatter": "language_server",
-			"format_on_save": "on"
+			"formatter": [
+				{
+					"language_server": {
+						"name": "biome"
+					}
+				}
+			],
+			"format_on_save": "on",
+			"prettier": {
+				"allowed": false
+			}
 		},
 		"JSON": {
-			"language_servers": ["biome"],
-			"formatter": "language_server",
-			"format_on_save": "on"
+			"formatter": [
+				{
+					"language_server": {
+						"name": "biome"
+					}
+				}
+			],
+			"format_on_save": "on",
+			"prettier": {
+				"allowed": false
+			}
 		},
 		"JSONC": {
-			"language_servers": ["biome"],
-			"formatter": "language_server",
-			"format_on_save": "on"
+			"formatter": [
+				{
+					"language_server": {
+						"name": "biome"
+					}
+				}
+			],
+			"format_on_save": "on",
+			"prettier": {
+				"allowed": false
+			}
 		}
 	}
 }
