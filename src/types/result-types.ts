@@ -11,7 +11,7 @@ import type {
 } from './branded-types';
 
 // Core execution result union with precise discrimination
-export type ExecutionResult<T, E extends TypedError = TypedError> =
+export type TryoResult<T, E extends TypedError = TypedError> =
 	| SuccessResult<T, E>
 	| FailureResult<E>
 	| AbortedResult<E>
@@ -23,7 +23,7 @@ export interface SuccessResult<T, E extends TypedError> {
 	readonly ok: true;
 	readonly data: T;
 	readonly error: null;
-	readonly metrics?: ExecutionMetrics<E>;
+	readonly metrics?: TryoMetrics<E>;
 }
 
 // General failure result for errors
@@ -32,7 +32,7 @@ export interface FailureResult<E extends TypedError> {
 	readonly ok: false;
 	readonly data: null;
 	readonly error: E;
-	readonly metrics?: ExecutionMetrics<E>;
+	readonly metrics?: TryoMetrics<E>;
 }
 
 // Specific aborted result
@@ -41,7 +41,7 @@ export interface AbortedResult<E extends TypedError> {
 	readonly ok: false;
 	readonly data: null;
 	readonly error: E;
-	readonly metrics?: ExecutionMetrics<E>;
+	readonly metrics?: TryoMetrics<E>;
 }
 
 // Specific timeout result
@@ -50,11 +50,11 @@ export interface TimeoutResult<E extends TypedError> {
 	readonly ok: false;
 	readonly data: null;
 	readonly error: E;
-	readonly metrics?: ExecutionMetrics<E>;
+	readonly metrics?: TryoMetrics<E>;
 }
 
 // Enhanced execution metrics with detailed retry history
-export interface ExecutionMetrics<E extends TypedError> {
+export interface TryoMetrics<E extends TypedError> {
 	readonly totalAttempts: RetryCount;
 	readonly totalRetries: RetryCount;
 	readonly totalDuration: Milliseconds;
@@ -117,19 +117,19 @@ export interface BatchMetrics {
 
 // Type guards for runtime discrimination
 export const isSuccess = <T, E extends TypedError>(
-	result: ExecutionResult<T, E>,
+	result: TryoResult<T, E>,
 ): result is SuccessResult<T, E> => result.type === 'success';
 
 export const isFailure = <T, E extends TypedError>(
-	result: ExecutionResult<T, E>,
+	result: TryoResult<T, E>,
 ): result is FailureResult<E> => result.type === 'failure';
 
 export const isAborted = <T, E extends TypedError>(
-	result: ExecutionResult<T, E>,
+	result: TryoResult<T, E>,
 ): result is AbortedResult<E> => result.type === 'aborted';
 
 export const isTimeout = <T, E extends TypedError>(
-	result: ExecutionResult<T, E>,
+	result: TryoResult<T, E>,
 ): result is TimeoutResult<E> => result.type === 'timeout';
 
 export const isBatchSuccess = <T, E extends TypedError>(
@@ -146,9 +146,9 @@ export const isBatchFailure = <T, E extends TypedError>(
 
 // Utility functions for result transformation
 export const mapSuccess = <T, U, E extends TypedError>(
-	result: ExecutionResult<T, E>,
+	result: TryoResult<T, E>,
 	mapper: (data: T) => U,
-): ExecutionResult<U, E> => {
+): TryoResult<U, E> => {
 	if (result.type === 'success') {
 		return {
 			...result,
@@ -159,9 +159,9 @@ export const mapSuccess = <T, U, E extends TypedError>(
 };
 
 export const mapError = <T, E extends TypedError>(
-	result: ExecutionResult<T, E>,
+	result: TryoResult<T, E>,
 	mapper: (error: E) => E,
-): ExecutionResult<T, E> => {
+): TryoResult<T, E> => {
 	if (result.type !== 'success') {
 		return {
 			...result,

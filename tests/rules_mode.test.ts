@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import type { ExecutorOptions } from '../src/core/executor';
-import { Executor } from '../src/core/executor';
+import type { TryoOptions } from '../src/core/tryo';
+import { tryo } from '../src/core/tryo';
 import { errorRule } from '../src/error/error-rules';
 import { sleep } from '../src/utils/timing';
 
 describe('rulesMode default behavior', () => {
 	it('extends default rules when rulesMode is undefined (default)', async () => {
-		const ex = new Executor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'custom' => e === 'custom')
@@ -16,10 +16,10 @@ describe('rulesMode default behavior', () => {
 					})),
 			],
 			// rulesMode is undefined, should default to "extend"
-		} as ExecutorOptions);
+		} as TryoOptions);
 
 		// 1. Check custom rule
-		const resultCustom = await ex.execute(async () => {
+		const resultCustom = await ex.run(async () => {
 			throw 'custom';
 		});
 		expect(resultCustom.ok).toBe(false);
@@ -28,7 +28,7 @@ describe('rulesMode default behavior', () => {
 		}
 
 		// 2. Check default rule (e.g. Timeout)
-		const resultTimeout = await ex.execute(
+		const resultTimeout = await ex.run(
 			async () => {
 				await sleep(50);
 				return 'done';
@@ -46,7 +46,7 @@ describe('rulesMode default behavior', () => {
 	});
 
 	it("replaces default rules when rulesMode is 'replace'", async () => {
-		const ex = new Executor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'custom' => e === 'custom')
@@ -56,10 +56,10 @@ describe('rulesMode default behavior', () => {
 					})),
 			],
 			rulesMode: 'replace',
-		} as ExecutorOptions);
+		} as TryoOptions);
 
 		// 1. Check custom rule
-		const resultCustom = await ex.execute(async () => {
+		const resultCustom = await ex.run(async () => {
 			throw 'custom';
 		});
 		expect(resultCustom.ok).toBe(false);
@@ -72,7 +72,7 @@ describe('rulesMode default behavior', () => {
 		// because run({timeout}) might generate an error that we can't easily inspect if it's internal.
 		// However, the default rules check for error.name === 'TimeoutError' usually.
 
-		const resultTimeout = await ex.execute(async () => {
+		const resultTimeout = await ex.run(async () => {
 			const e = new Error('timeout');
 			e.name = 'TimeoutError';
 			throw e;

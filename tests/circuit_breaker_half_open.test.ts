@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { Executor } from '../src/core/executor';
+import { tryo } from '../src/core/tryo';
 import { sleep } from '../src/utils/timing';
 
 describe('Circuit breaker: half-open', () => {
 	it('enforces halfOpenRequests limit', async () => {
-		const ex = new Executor({
+		const ex = tryo({
 			circuitBreaker: {
 				failureThreshold: 1,
 				resetTimeout: 20,
@@ -13,18 +13,18 @@ describe('Circuit breaker: half-open', () => {
 			},
 		});
 
-		await ex.execute(async () => {
+		await ex.run(async () => {
 			throw new Error('boom');
 		});
 
 		// Wait for reset timeout so breaker moves to half-open on next check
 		await sleep(25);
 
-		const slow = ex.execute(async () => {
+		const slow = ex.run(async () => {
 			await sleep(30);
 			return 1;
 		});
-		const denied = await ex.execute(async () => 2);
+		const denied = await ex.run(async () => 2);
 		const ok = await slow;
 
 		expect(ok.ok).toBe(true);
@@ -34,13 +34,13 @@ describe('Circuit breaker: half-open', () => {
 		}
 
 		// After success in half-open, breaker should be closed again
-		const r = await ex.execute(async () => 42);
+		const r = await ex.run(async () => 42);
 		expect(r.ok).toBe(true);
 	});
 
 	it('fires onCircuitStateChange hook on transitions', async () => {
 		const transitions: Array<{ from: string; to: string }> = [];
-		const ex = new Executor({
+		const ex = tryo({
 			circuitBreaker: {
 				failureThreshold: 1,
 				resetTimeout: 10,
@@ -51,7 +51,7 @@ describe('Circuit breaker: half-open', () => {
 			},
 		});
 
-		await ex.execute(async () => {
+		await ex.run(async () => {
 			throw new Error('boom');
 		});
 		expect(
@@ -59,7 +59,7 @@ describe('Circuit breaker: half-open', () => {
 		).toBe(true);
 
 		await sleep(15);
-		await ex.execute(async () => 1);
+		await ex.run(async () => 1);
 		expect(
 			transitions.some((t) => t.from === 'open' && t.to === 'half-open'),
 		).toBe(true);

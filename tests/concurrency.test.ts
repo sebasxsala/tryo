@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { Executor } from '../src/core/executor';
+import { tryo } from '../src/core/tryo';
 import { sleep } from '../src/utils/timing';
 
 describe('Concurrency', () => {
@@ -8,7 +8,7 @@ describe('Concurrency', () => {
 		let active = 0;
 		let maxActive = 0;
 
-		const ex = new Executor();
+		const ex = tryo();
 
 		const tasks: Array<(ctx: { signal: AbortSignal }) => Promise<number>> =
 			Array.from({ length: 5 }, (_, i) => async (_ctx) => {
@@ -20,7 +20,7 @@ describe('Concurrency', () => {
 			});
 
 		const concurrency = 2;
-		const results = await ex.executeAll(tasks, { concurrency });
+		const results = await ex.all(tasks, { concurrency });
 
 		const duration = Date.now() - start;
 
@@ -39,14 +39,14 @@ describe('Concurrency', () => {
 
 	test('runAll defaults to unbounded concurrency (Promise.all behavior)', async () => {
 		const start = Date.now();
-		const ex = new Executor();
+		const ex = tryo();
 		const tasks: Array<(ctx: { signal: AbortSignal }) => Promise<number>> =
 			Array.from({ length: 10 }, (_, i) => async (_ctx) => {
 				await sleep(50);
 				return i;
 			});
 
-		await ex.executeAll(tasks); // No concurrency option
+		await ex.all(tasks); // No concurrency option
 		const duration = Date.now() - start;
 
 		// Should take roughly 50ms (plus overhead)

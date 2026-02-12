@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { Executor } from '../src/core/executor';
+import { tryo } from '../src/core/tryo';
 import { HttpError, TypedError } from '../src/error/typed-error';
 
 describe('Error normalization', () => {
@@ -12,8 +12,8 @@ describe('Error normalization', () => {
 			}
 		}
 
-		const ex = new Executor();
-		const r = await ex.execute(async () => {
+		const ex = tryo();
+		const r = await ex.run(async () => {
 			throw new MyTypedError();
 		});
 
@@ -26,8 +26,8 @@ describe('Error normalization', () => {
 	});
 
 	it('keeps HttpError code and status', async () => {
-		const ex = new Executor();
-		const r = await ex.execute(async () => {
+		const ex = tryo();
+		const r = await ex.run(async () => {
 			throw new HttpError('bad', 500);
 		});
 
@@ -39,8 +39,8 @@ describe('Error normalization', () => {
 	});
 
 	it('maps plain { status } objects to HTTP when status >= 400', async () => {
-		const ex = new Executor();
-		const r = await ex.execute(async () => {
+		const ex = tryo();
+		const r = await ex.run(async () => {
 			throw { status: 500, message: 'server' };
 		});
 

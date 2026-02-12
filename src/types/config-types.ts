@@ -9,7 +9,7 @@ import type { TypedError } from '../error/typed-error';
 import type { RetryStrategy } from '../retry/retry-strategies';
 
 // Main execution configuration
-export interface ExecutionConfig<E extends TypedError = TypedError> {
+export interface TryoConfig<E extends TypedError = TypedError> {
 	/** Abort signal passed to tasks */
 	readonly signal?: AbortSignal;
 
@@ -109,13 +109,13 @@ export interface LoggerConfig<E extends TypedError> {
 // Hook configuration for lifecycle events
 export interface HookConfig<E extends TypedError> {
 	/** Called on successful execution */
-	readonly onSuccess?: <T>(data: T, metrics?: ExecutionMetrics<E>) => void;
+	readonly onSuccess?: <T>(data: T, metrics?: TryoMetrics<E>) => void;
 
 	/** Called on failed execution */
-	readonly onError?: (error: E, metrics?: ExecutionMetrics<E>) => void;
+	readonly onError?: (error: E, metrics?: TryoMetrics<E>) => void;
 
 	/** Called always, success or failure */
-	readonly onFinally?: (metrics?: ExecutionMetrics<E>) => void;
+	readonly onFinally?: (metrics?: TryoMetrics<E>) => void;
 
 	/** Called on abort */
 	readonly onAbort?: (signal: AbortSignal) => void;
@@ -134,13 +134,13 @@ export interface HookConfig<E extends TypedError> {
 export type CircuitState = 'closed' | 'open' | 'half-open';
 
 // Execution metrics (re-export from result-types for convenience)
-export type ExecutionMetrics<E extends TypedError> =
-	import('./result-types').ExecutionMetrics<E>;
+export type TryoMetrics<E extends TypedError> =
+	import('./result-types').TryoMetrics<E>;
 
 // Default configuration builder
-export const createExecutionConfig = <E extends TypedError>(
-	config: Partial<ExecutionConfig<E>> = {},
-): ExecutionConfig<E> => ({
+export const createTryoConfig = <E extends TypedError>(
+	config: Partial<TryoConfig<E>> = {},
+): TryoConfig<E> => ({
 	errorHandling: {
 		normalizer: ((err: unknown) => {
 			throw err;

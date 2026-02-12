@@ -1,25 +1,22 @@
 /**
- * Public API: legacy runner-first.
+ * Public API
  *
- * Default export is a factory (trybox) that creates an internal Executor.
+ * Default export is the tryo factory.
  */
 
-export type { Runner } from './core/execution';
 export {
-	execute,
-	executeAll,
-	executeAllOrThrow,
-	executeOrThrow,
-	executeOrThrowAll,
-	partitionAll,
+	all,
+	allOrThrow,
+	orThrow,
 	run,
-	runAll,
 	runOrThrow,
-	runOrThrowAll,
-	trybox,
-	trybox as default,
-} from './core/execution';
-export type { ExecutorOptions, RulesMode } from './core/executor';
+} from './core/default';
+export {
+	type RulesMode,
+	type TryoOptions,
+	tryo,
+	tryo as default,
+} from './core/tryo';
 export { errorRule } from './error/error-rules';
 export { RetryStrategies } from './retry/retry-strategies';
 export type {
@@ -36,12 +33,12 @@ export {
 	asRetryCount,
 	asStatusCode,
 } from './types/branded-types';
-export type { ExecutionConfig } from './types/config-types';
+export type { TryoConfig } from './types/config-types';
 export type {
 	AbortedResult,
-	ExecutionMetrics,
-	ExecutionResult,
 	FailureResult,
 	SuccessResult,
 	TimeoutResult,
+	TryoMetrics,
+	TryoResult,
 } from './types/result-types';

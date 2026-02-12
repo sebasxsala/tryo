@@ -28,14 +28,14 @@ import {
 	type Milliseconds,
 	type RetryCount,
 } from '../types/branded-types';
-import type { ExecutionConfig, JitterConfig } from '../types/config-types';
+import type { JitterConfig, TryoConfig } from '../types/config-types';
 import type {
 	AbortedResult,
-	ExecutionMetrics,
-	ExecutionResult,
 	FailureResult,
 	SuccessResult,
 	TimeoutResult,
+	TryoMetrics,
+	TryoResult,
 } from '../types/result-types';
 import { sleep } from '../utils/timing';
 
@@ -62,9 +62,9 @@ export type InferErrorFromRules<
 	? TypedError
 	: RuleReturn<TRules[number]> | UnknownError;
 
-export type ExecutorOptions<E extends TypedError = TypedError> = Omit<
-	Partial<ExecutionConfig<E>>,
-	'errorHandling'
+export type TryoOptions<E extends TypedError = TypedError> = Omit<
+	Partial<TryoConfig<E>>,
+	'errorHandling' | 'signal'
 > & {
 	rules?: Array<ErrorRule<E>>;
 	rulesMode?: RulesMode;
@@ -74,7 +74,7 @@ export type ExecutorOptions<E extends TypedError = TypedError> = Omit<
 };
 
 const buildNormalizer = <E extends TypedError>(
-	opts: ExecutorOptions<E>,
+	opts: TryoOptions<E>,
 ): ErrorNormalizer<E> => {
 	if (opts.toError) return opts.toError;
 
@@ -97,12 +97,12 @@ const buildNormalizer = <E extends TypedError>(
 	return createErrorNormalizer(rules, fallback);
 };
 
-export class Executor<E extends TypedError = TypedError> {
+export class TryoEngine<E extends TypedError = TypedError> {
 	private readonly circuitBreaker?: CircuitBreaker<E>;
-	private readonly config: ExecutionConfig<E>;
+	private readonly config: TryoConfig<E>;
 	private lastCircuitState?: 'closed' | 'open' | 'half-open';
 
-	constructor(options: ExecutorOptions<E> = {}) {
+	constructor(options: TryoOptions<E> = {}) {
 		const {
 			rules: _rules,
 			rulesMode: _rulesMode,
@@ -112,7 +112,7 @@ export class Executor<E extends TypedError = TypedError> {
 			...executionConfig
 		} = options;
 		const normalizer = buildNormalizer(options);
-		const baseConfig: ExecutionConfig<E> = {
+		const baseConfig: TryoConfig<E> = {
 			...executionConfig,
 			errorHandling: {
 				normalizer,
@@ -129,10 +129,10 @@ export class Executor<E extends TypedError = TypedError> {
 	}
 
 	// Execute a single task
-	async execute<T>(
+	async run<T>(
 		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options: Partial<ExecutionConfig<E>> = {},
-	): Promise<ExecutionResult<T, E>> {
+		options: Partial<TryoConfig<E>> = {},
+	): Promise<TryoResult<T, E>> {
 		const mergedConfig = { ...this.config, ...options };
 
 		// Circuit breaker check
@@ -152,7 +152,7 @@ export class Executor<E extends TypedError = TypedError> {
 			if (!canExecute) {
 				const error = this.circuitBreaker.createOpenError() as E;
 
-				const result: ExecutionResult<T, E> = {
+				const result: TryoResult<T, E> = {
 					type: 'failure',
 					ok: false,
 					data: null,
@@ -194,37 +194,50 @@ export class Executor<E extends TypedError = TypedError> {
 		return result;
 	}
 
-	async executeOrThrow<T>(
+	async runOrThrow<T>(
 		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options: Partial<ExecutionConfig<E>> = {},
+		options: Partial<TryoConfig<E>> = {},
 	): Promise<T> {
-		const r = await this.execute(task, options);
+		const r = await this.run(task, options);
+		if (r.ok) return r.data;
+		throw r.error;
+	}
+
+	async orThrow<T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options: Partial<TryoConfig<E>> = {},
+	): Promise<T> {
+		const r = await this.run(task, options);
 		if (r.ok) return r.data;
 		throw r.error;
 	}
 
 	// Execute multiple tasks with concurrency control
-	async executeAll<T>(
+	async all<T>(
 		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
-		options: Partial<ExecutionConfig<E> & { concurrency?: number }> = {},
-	): Promise<ExecutionResult<T, E>[]> {
+		options: Partial<TryoConfig<E> & { concurrency?: number }> = {},
+	): Promise<TryoResult<T, E>[]> {
 		const mergedConfig = { ...this.config, ...options };
 		const rawConcurrency = mergedConfig.concurrency ?? Number.POSITIVE_INFINITY;
 		const concurrency = Number.isFinite(rawConcurrency)
 			? Number(asConcurrencyLimit(rawConcurrency))
 			: Number.POSITIVE_INFINITY;
 
-		const out: ExecutionResult<T, E>[] = new Array(tasks.length);
+		const out: TryoResult<T, E>[] = new Array(tasks.length);
 		let idx = 0;
 
 		const worker = async () => {
-			while (true) {
-				const current = idx;
-				idx++;
-				if (current >= tasks.length) return;
+			while (idx < tasks.length) {
+				// Optimization: Stop launching new tasks if the signal is already aborted
+				if (mergedConfig.signal?.aborted) break;
+
+				const current = idx++;
+				if (current >= tasks.length) break;
+
 				const task = tasks[current];
-				if (!task) return;
-				out[current] = await this.execute(task, mergedConfig);
+				if (!task) continue;
+
+				out[current] = await this.run(task, mergedConfig);
 			}
 		};
 
@@ -235,14 +248,25 @@ export class Executor<E extends TypedError = TypedError> {
 
 		await Promise.all(workers);
 
+		// Consistency: Ensure every task has a result (especially if aborted early)
+		for (let i = 0; i < tasks.length; i++) {
+			if (!(i in out)) {
+				const task = tasks[i];
+				if (task) {
+					// run() will immediately return an aborted result since signal is aborted
+					out[i] = await this.run(task, mergedConfig);
+				}
+			}
+		}
+
 		return out;
 	}
 
-	async executeAllOrThrow<T>(
+	async allOrThrow<T>(
 		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
-		options: Partial<ExecutionConfig<E> & { concurrency?: number }> = {},
+		options: Partial<TryoConfig<E> & { concurrency?: number }> = {},
 	): Promise<T[]> {
-		const results = await this.executeAll(tasks, options);
+		const results = await this.all(tasks, options);
 		for (const r of results) {
 			if (!r.ok) throw r.error;
 		}
@@ -252,7 +276,7 @@ export class Executor<E extends TypedError = TypedError> {
 		});
 	}
 
-	partitionAll<T>(results: Array<ExecutionResult<T, E>>): {
+	partitionAll<T>(results: Array<TryoResult<T, E>>): {
 		ok: Array<SuccessResult<T, E>>;
 		errors: Array<FailureResult<E> | AbortedResult<E> | TimeoutResult<E>>;
 		failure: Array<FailureResult<E>>;
@@ -303,19 +327,21 @@ export class Executor<E extends TypedError = TypedError> {
 	}
 
 	// Get executor configuration
-	getConfig(): ExecutionConfig<E> {
+	getConfig(): TryoConfig<E> {
 		return { ...this.config };
 	}
 
 	// Create a new executor with merged configuration
-	withConfig(additionalConfig: Partial<ExecutionConfig<E>>): Executor<E> {
+	withConfig(
+		additionalConfig: Omit<Partial<TryoConfig<E>>, 'signal'>,
+	): Tryo<E> {
 		const { errorHandling: currentHandling, ...baseConfig } = this.config;
 		const { errorHandling: nextHandling, ...extraConfig } = additionalConfig;
 
 		const normalizer = nextHandling?.normalizer ?? currentHandling.normalizer;
 		const mapError = nextHandling?.mapError ?? currentHandling.mapError;
 
-		return new Executor<E>({
+		return new TryoEngine<E>({
 			...baseConfig,
 			...extraConfig,
 			toError: normalizer,
@@ -325,32 +351,32 @@ export class Executor<E extends TypedError = TypedError> {
 
 	// Create a new executor with different error type
 	withErrorType<T extends TypedError>(
-		config: Partial<ExecutionConfig<T>> = {},
-	): Executor<T> {
-		return new Executor<T>(config as ExecutionConfig<T>);
+		config: Partial<TryoConfig<T>> = {},
+	): TryoEngine<T> {
+		return new TryoEngine<T>(config as TryoConfig<T>);
 	}
 }
 
 export function createExecutor<
 	const TRules extends readonly ErrorRule<TypedError>[],
 >(
-	options: Omit<ExecutorOptions<InferErrorFromRules<TRules>>, 'rules'> & {
+	options: Omit<TryoOptions<InferErrorFromRules<TRules>>, 'rules'> & {
 		rules: TRules;
 	},
-): Executor<InferErrorFromRules<TRules>>;
+): TryoEngine<InferErrorFromRules<TRules>>;
 export function createExecutor<E extends TypedError = DefaultError>(
-	options?: ExecutorOptions<E>,
-): Executor<E>;
+	options?: TryoOptions<E>,
+): TryoEngine<E>;
 export function createExecutor<E extends TypedError = DefaultError>(
-	options?: ExecutorOptions<E>,
-): Executor<E> {
-	return new Executor<E>(options);
+	options?: TryoOptions<E>,
+): TryoEngine<E> {
+	return new TryoEngine<E>(options);
 }
 
 async function executeInternal<T, E extends TypedError>(
 	task: (ctx: { signal: AbortSignal }) => Promise<T>,
-	config: ExecutionConfig<E>,
-): Promise<ExecutionResult<T, E>> {
+	config: TryoConfig<E>,
+): Promise<TryoResult<T, E>> {
 	const {
 		signal: outerSignal,
 		ignoreAbort = true,
@@ -504,7 +530,7 @@ async function executeInternal<T, E extends TypedError>(
 				totalAttempts > (0 as RetryCount)
 					? ((Number(totalAttempts) - 1) as RetryCount)
 					: (0 as RetryCount);
-			const metrics: ExecutionMetrics<E> = {
+			const metrics: TryoMetrics<E> = {
 				totalAttempts,
 				totalRetries,
 				totalDuration: (Date.now() - startTime) as Milliseconds,
@@ -530,7 +556,7 @@ async function executeInternal<T, E extends TypedError>(
 					? ((Number(totalAttempts) - 1) as RetryCount)
 					: (0 as RetryCount);
 
-			const metrics: ExecutionMetrics<E> = {
+			const metrics: TryoMetrics<E> = {
 				totalAttempts,
 				totalRetries,
 				totalDuration: (Date.now() - startTime) as Milliseconds,
@@ -652,3 +678,54 @@ function applyJitter(delayMs: number, jitter?: JitterConfig): number {
 		}
 	}
 }
+
+export type Tryo<E extends TypedError = TypedError> = {
+	run: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<TryoConfig<E>>,
+	) => Promise<TryoResult<T, E>>;
+
+	runOrThrow: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<TryoConfig<E>>,
+	) => Promise<T>;
+
+	orThrow: <T>(
+		task: (ctx: { signal: AbortSignal }) => Promise<T>,
+		options?: Partial<TryoConfig<E>>,
+	) => Promise<T>;
+	all: <T>(
+		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
+		options?: Partial<TryoConfig<E> & { concurrency?: number }>,
+	) => Promise<Array<TryoResult<T, E>>>;
+	allOrThrow: <T>(
+		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
+		options?: Partial<TryoConfig<E> & { concurrency?: number }>,
+	) => Promise<T[]>;
+	partitionAll: <T>(results: Array<TryoResult<T, E>>) => {
+		ok: Array<SuccessResult<T, E>>;
+		errors: Array<FailureResult<E> | AbortedResult<E> | TimeoutResult<E>>;
+		failure: Array<FailureResult<E>>;
+		aborted: Array<AbortedResult<E>>;
+		timeout: Array<TimeoutResult<E>>;
+	};
+	withConfig: (
+		additionalConfig: Omit<Partial<TryoConfig<E>>, 'signal'>,
+	) => Tryo<E>;
+};
+
+export const tryo = <E extends TypedError = TypedError>(
+	options: TryoOptions<E> = {},
+): Tryo<E> => {
+	const engine = new TryoEngine(options);
+
+	return {
+		run: (task, opts) => engine.run(task, opts),
+		orThrow: (task, opts) => engine.orThrow(task, opts),
+		runOrThrow: (task, opts) => engine.runOrThrow(task, opts),
+		all: (tasks, opts) => engine.all(tasks, opts),
+		allOrThrow: (tasks, opts) => engine.allOrThrow(tasks, opts),
+		partitionAll: (results) => engine.partitionAll(results),
+		withConfig: (opts) => engine.withConfig(opts),
+	};
+};

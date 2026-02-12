@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { Executor } from '../src/core/executor';
+import { tryo } from '../src/core/tryo';
 import { errorRule } from '../src/error/error-rules';
 
 describe('Executor.withConfig', () => {
 	it('preserves existing error normalization by default', async () => {
-		const ex = new Executor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'custom' => e === 'custom')
@@ -17,7 +17,7 @@ describe('Executor.withConfig', () => {
 		});
 
 		const derived = ex.withConfig({ timeout: 1 });
-		const r = await derived.execute(async () => {
+		const r = await derived.run(async () => {
 			throw 'custom';
 		});
 

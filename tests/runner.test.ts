@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test';
-import type { ExecutorOptions } from '../src/core/executor';
-import { Executor } from '../src/core/executor';
+import type { TryoOptions } from '../src/core/tryo';
+import { tryo } from '../src/core/tryo';
 import { sleep } from '../src/utils/timing';
 
-const make = (opts: ExecutorOptions = {}) => new Executor(opts);
+const make = (opts: TryoOptions = {}) => tryo(opts);
 
 describe('run: success', () => {
 	it('returns ok:true with data', async () => {
 		const ex = make();
-		const r = await ex.execute(async () => 42);
+		const r = await ex.run(async () => 42);
 		expect(r.ok).toBe(true);
 		if (r.ok) expect(r.data).toBe(42);
 	});
@@ -19,7 +19,7 @@ describe('run: abort', () => {
 		const ex = make();
 		const controller = new AbortController();
 		controller.abort();
-		const r = await ex.execute(
+		const r = await ex.run(
 			async () => {
 				await sleep(10);
 				return 1;
@@ -34,7 +34,7 @@ describe('run: abort', () => {
 describe('run: timeout', () => {
 	it('times out with TimeoutError mapping', async () => {
 		const ex = make();
-		const r = await ex.execute(
+		const r = await ex.run(
 			async () => {
 				await sleep(50);
 				return 'done';
@@ -52,7 +52,7 @@ describe('run: signal passing', () => {
 		const ex = make();
 		const controller = new AbortController();
 
-		await ex.execute(
+		await ex.run(
 			async (ctx) => {
 				receivedSignal = ctx.signal;
 				return 1;
@@ -65,7 +65,7 @@ describe('run: signal passing', () => {
 
 		// Test aborted signal during execution
 		const controller2 = new AbortController();
-		await ex.execute(
+		await ex.run(
 			async (ctx) => {
 				receivedSignal = ctx.signal;
 				controller2.abort();
@@ -89,7 +89,7 @@ describe('run: abort metrics', () => {
 			startedResolve = res;
 		});
 
-		const p = ex.execute(
+		const p = ex.run(
 			async ({ signal }) => {
 				startedResolve?.();
 				await sleep(50, signal);
@@ -110,7 +110,7 @@ describe('run: abort metrics', () => {
 
 	it('reports correct attempts on timeout', async () => {
 		const ex = make();
-		const r = await ex.execute(
+		const r = await ex.run(
 			async () => {
 				await sleep(20);
 				return 1;
@@ -134,9 +134,9 @@ describe('runner: circuit breaker', () => {
 		const fail = async () => {
 			throw new Error('boom');
 		};
-		const r1 = await ex.execute(fail);
-		const r2 = await ex.execute(fail);
-		const r3 = await ex.execute(async () => 1);
+		const r1 = await ex.run(fail);
+		const r2 = await ex.run(fail);
+		const r3 = await ex.run(async () => 1);
 
 		expect(r1.ok).toBe(false);
 		expect(r2.ok).toBe(false);
@@ -149,14 +149,14 @@ describe('runner: circuit breaker', () => {
 		await sleep(60);
 
 		// Half-open -> Success -> Closed
-		const r4 = await ex.execute(async () => 42);
+		const r4 = await ex.run(async () => 42);
 		expect(r4.ok).toBe(true);
 
 		// Should be closed now, allowing failures to count from 0
-		const r5 = await ex.execute(fail);
+		const r5 = await ex.run(fail);
 		expect(r5.ok).toBe(false);
 		// Should not be open yet (threshold 2)
-		const r6 = await ex.execute(async () => 42);
+		const r6 = await ex.run(async () => 42);
 		expect(r6.ok).toBe(true);
 	});
 });
@@ -171,7 +171,7 @@ describe('observability safety', () => {
 			},
 		});
 
-		const r = await ex.execute(async () => 1);
+		const r = await ex.run(async () => 1);
 		expect(r.ok).toBe(true);
 		if (r.ok) expect(r.data).toBe(1);
 	});
@@ -185,7 +185,7 @@ describe('observability safety', () => {
 			},
 		});
 
-		const r = await ex.execute(async () => {
+		const r = await ex.run(async () => {
 			throw new Error('boom');
 		});
 
@@ -205,7 +205,7 @@ describe('observability safety', () => {
 			},
 		});
 
-		const r = await ex.execute(async () => 1);
+		const r = await ex.run(async () => 1);
 		expect(r.ok).toBe(true);
 	});
 
@@ -221,10 +221,10 @@ describe('observability safety', () => {
 			},
 		});
 
-		const r1 = await ex.execute(async () => 1);
+		const r1 = await ex.run(async () => 1);
 		expect(r1.ok).toBe(true);
 
-		const r2 = await ex.execute(async () => {
+		const r2 = await ex.run(async () => {
 			throw new Error('boom');
 		});
 		expect(r2.ok).toBe(false);

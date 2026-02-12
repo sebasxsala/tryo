@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { createExecutor } from '../src/core/executor';
+import { createExecutor } from '../src/core/tryo';
 import { errorRule } from '../src/error/error-rules';
 
 describe('Type inference', () => {
@@ -23,7 +23,7 @@ describe('Type inference', () => {
 			] as const,
 		});
 
-		const result = await ex.execute(async () => {
+		const result = await ex.run(async () => {
 			throw 'foo';
 		});
 
@@ -48,7 +48,7 @@ describe('Type inference', () => {
 
 	it('preserves standard error codes', async () => {
 		const ex = createExecutor();
-		const result = await ex.execute(async () => {
+		const result = await ex.run(async () => {
 			throw new Error('fail');
 		});
 		if (!result.ok) {
@@ -72,7 +72,7 @@ describe('Type inference', () => {
 			] as const,
 		});
 
-		const results = await ex.executeAll([
+		const results = await ex.all([
 			async () => {
 				throw 'foo';
 			},
@@ -100,7 +100,7 @@ describe('Type inference', () => {
 		});
 
 		// Should handle custom error
-		const resultFoo = await ex.execute(async () => {
+		const resultFoo = await ex.run(async () => {
 			throw 'foo';
 		});
 		if (!resultFoo.ok) {
@@ -108,7 +108,7 @@ describe('Type inference', () => {
 		}
 
 		// Should NOT handle timeout (default rule) -> falls back to UNKNOWN
-		const resultTimeout = await ex.execute(async () => {
+		const resultTimeout = await ex.run(async () => {
 			const err = new Error('timeout');
 			err.name = 'TimeoutError';
 			throw err;
@@ -134,7 +134,7 @@ describe('Type inference', () => {
 		});
 
 		// Should handle custom error
-		const resultFoo = await ex.execute(async () => {
+		const resultFoo = await ex.run(async () => {
 			throw 'foo';
 		});
 		if (!resultFoo.ok) {
@@ -142,7 +142,7 @@ describe('Type inference', () => {
 		}
 
 		// Should handle timeout (default rule)
-		const resultTimeout = await ex.execute(async () => {
+		const resultTimeout = await ex.run(async () => {
 			const err = new Error('timeout');
 			err.name = 'TimeoutError';
 			throw err;
@@ -156,7 +156,7 @@ describe('Type inference', () => {
 	it('narrows success result types', async () => {
 		const ex = createExecutor();
 
-		const r = await ex.execute(async () => ({
+		const r = await ex.run(async () => ({
 			id: 123 as const,
 			name: 'alice' as const,
 		}));

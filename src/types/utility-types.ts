@@ -4,15 +4,15 @@
  */
 
 import type { TypedError } from '../error/typed-error';
-import type { ExecutionResult } from './result-types';
+import type { TryoResult } from './result-types';
 
 // Extract success type from result
 export type ExtractSuccess<T> =
-	T extends ExecutionResult<infer U, TypedError> ? U : never;
+	T extends TryoResult<infer U, TypedError> ? U : never;
 
 // Extract error type from result
 export type ExtractError<T> =
-	T extends ExecutionResult<unknown, infer E> ? E : never;
+	T extends TryoResult<unknown, infer E> ? E : never;
 
 // Conditional type for async functions
 export type AsyncFunction<T extends unknown[], R> = (...args: T) => Promise<R>;
@@ -48,7 +48,7 @@ export type Awaited<T> = T extends PromiseLike<infer U> ? Awaited<U> : T;
 // Error type inference helper
 export type InferErrorType<T> = T extends (
 	...args: unknown[]
-) => Promise<ExecutionResult<unknown, infer E>>
+) => Promise<TryoResult<unknown, infer E>>
 	? E
 	: TypedError;
 
