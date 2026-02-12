@@ -73,6 +73,7 @@ export class ErrorRuleBuilder<T> {
 			meta?: unknown;
 			status?: number;
 			cause?: unknown;
+			retryable?: boolean;
 		},
 	>(mapper: (err: T) => Out): ErrorRule<TypedError<Out['code'], Out['meta']>> {
 		return (err: unknown) => {
@@ -87,6 +88,7 @@ export class ErrorRuleBuilder<T> {
 						cause: out.cause ?? err,
 						meta: out.meta,
 						status: out.status,
+						retryable: out.retryable,
 					});
 				}
 			}
@@ -109,6 +111,7 @@ export class ErrorMapper<T, C extends string> {
 			cause?: unknown;
 			meta?: M;
 			status?: number;
+			retryable?: boolean;
 		},
 	) {
 		return (err: unknown): TypedError<C, M> | null => {
@@ -123,6 +126,7 @@ export class ErrorMapper<T, C extends string> {
 						cause: mapped.cause,
 						meta: mapped.meta,
 						status: mapped.status,
+						retryable: mapped.retryable,
 					});
 				}
 			}
@@ -225,6 +229,7 @@ export const BuiltinRules = {
 		.with((err) => ({
 			message: err.message || 'Operation was aborted',
 			cause: err,
+			retryable: false,
 		})),
 
 	// Timeout errors
@@ -267,10 +272,13 @@ export const BuiltinRules = {
 		.toCode('HTTP')
 		.with((err) => {
 			const status = err.status ?? err.statusCode;
+			const isRetryable =
+				typeof status === 'number' && (status >= 500 || status === 429);
 			return {
 				message: err.message || `HTTP ${status ?? 'error'} error`,
 				cause: err,
 				status: typeof status === 'number' ? status : undefined,
+				retryable: isRetryable,
 			};
 		}),
 

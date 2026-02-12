@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { createExecutor } from '../src/core/tryo';
+import { tryo } from '../src/core/tryo';
 import { errorRule } from '../src/error/error-rules';
 
 describe('Type inference', () => {
 	it('infers custom error codes from rules and narrows meta type', async () => {
-		const ex = createExecutor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
@@ -47,7 +47,7 @@ describe('Type inference', () => {
 	});
 
 	it('preserves standard error codes', async () => {
-		const ex = createExecutor();
+		const ex = tryo();
 		const result = await ex.run(async () => {
 			throw new Error('fail');
 		});
@@ -60,7 +60,7 @@ describe('Type inference', () => {
 	});
 
 	it('infers types in runAll', async () => {
-		const ex = createExecutor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
@@ -87,7 +87,7 @@ describe('Type inference', () => {
 	});
 
 	it("supports rulesMode='replace' to exclude default rules", async () => {
-		const ex = createExecutor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
@@ -121,7 +121,7 @@ describe('Type inference', () => {
 	});
 
 	it("supports rulesMode='extend' (default) to include default rules", async () => {
-		const ex = createExecutor({
+		const ex = tryo({
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
@@ -154,7 +154,7 @@ describe('Type inference', () => {
 	});
 
 	it('narrows success result types', async () => {
-		const ex = createExecutor();
+		const ex = tryo();
 
 		const r = await ex.run(async () => ({
 			id: 123 as const,

@@ -357,20 +357,28 @@ export class TryoEngine<E extends TypedError = TypedError> {
 	}
 }
 
-export function createExecutor<
-	const TRules extends readonly ErrorRule<TypedError>[],
->(
+export function tryo<const TRules extends readonly ErrorRule<TypedError>[]>(
 	options: Omit<TryoOptions<InferErrorFromRules<TRules>>, 'rules'> & {
 		rules: TRules;
 	},
-): TryoEngine<InferErrorFromRules<TRules>>;
-export function createExecutor<E extends TypedError = DefaultError>(
+): Tryo<InferErrorFromRules<TRules>>;
+export function tryo<E extends TypedError = DefaultError>(
 	options?: TryoOptions<E>,
-): TryoEngine<E>;
-export function createExecutor<E extends TypedError = DefaultError>(
-	options?: TryoOptions<E>,
-): TryoEngine<E> {
-	return new TryoEngine<E>(options);
+): Tryo<E>;
+export function tryo<E extends TypedError = DefaultError>(
+	options: TryoOptions<E> = {},
+): Tryo<E> {
+	const engine = new TryoEngine(options);
+
+	return {
+		run: (task, opts) => engine.run(task, opts),
+		orThrow: (task, opts) => engine.orThrow(task, opts),
+		runOrThrow: (task, opts) => engine.runOrThrow(task, opts),
+		all: (tasks, opts) => engine.all(tasks, opts),
+		allOrThrow: (tasks, opts) => engine.allOrThrow(tasks, opts),
+		partitionAll: (results) => engine.partitionAll(results),
+		withConfig: (opts) => engine.withConfig(opts),
+	};
 }
 
 async function executeInternal<T, E extends TypedError>(
@@ -714,18 +722,4 @@ export type Tryo<E extends TypedError = TypedError> = {
 	) => Tryo<E>;
 };
 
-export const tryo = <E extends TypedError = TypedError>(
-	options: TryoOptions<E> = {},
-): Tryo<E> => {
-	const engine = new TryoEngine(options);
-
-	return {
-		run: (task, opts) => engine.run(task, opts),
-		orThrow: (task, opts) => engine.orThrow(task, opts),
-		runOrThrow: (task, opts) => engine.runOrThrow(task, opts),
-		all: (tasks, opts) => engine.all(tasks, opts),
-		allOrThrow: (tasks, opts) => engine.allOrThrow(tasks, opts),
-		partitionAll: (results) => engine.partitionAll(results),
-		withConfig: (opts) => engine.withConfig(opts),
-	};
-};
+// (tryo function was here, now moved and overloaded above)

@@ -1,199 +1,180 @@
-# trybox
+# tryo
 
-Run sync/async functions and return a typed Result instead of throwing. `trybox` provides powerful error normalization, retry logic, and concurrency control.
+Run sync/async functions and return a typed Result instead of throwing. `tryo` provides powerful error normalization, retry logic, concurrency control, and circuit breakers with a premium developer experience.
 
 ## Installation
 
 ```bash
-npm install trybox
+npm install tryo
 # or
-bun add trybox
+bun add tryo
 ```
 
 ## Basic Usage
 
+You can use the top-level shortcuts for simple cases, or create a configured instance for complex scenarios.
+
+### Using Shortcuts
+
 ```typescript
-import trybox from "trybox";
+import { run } from "tryo";
 
-const runner = trybox();
-
-const result = await runner.run(async () => {
+const result = await run(async () => {
   const res = await fetch("/api/data");
   if (!res.ok) throw new Error("Failed");
   return res.json();
 });
 
 if (result.ok) {
-  console.log(result.data);
+  console.log(result.data); // result.data is typed
 } else {
-  console.error(result.error.message);
+  console.error(result.error.code); // "HTTP", "UNKNOWN", etc.
 }
+```
+
+### Using the Factory (Best for Apps)
+
+Creating an instance allows you to shared configuration like retries, circuit breakers, and custom error rules across your app.
+
+```typescript
+import tryo from "tryo";
+
+const ex = tryo({
+  retry: {
+    maxRetries: 3,
+    strategy: RetryStrategies.exponential(100),
+  },
+  circuitBreaker: {
+    failureThreshold: 5,
+    resetTimeout: 10000,
+  }
+});
+
+const result = await ex.run(fetchData);
 ```
 
 ## Error Handling
 
-`trybox` normalizes all errors into a `TypedError` instance with a stable `code`.
+`tryo` normalizes all errors into a `TypedError` instance with a stable `code`.
 
 ### The `TypedError` Shape
 
-All errors are normalized to this shape:
-
 ```typescript
 type TypedError<Code extends string = string, Meta = unknown> = {
-  code: Code; // Stable error code (e.g. "TIMEOUT", "HTTP")
-  message: string; // Human-readable message
-  cause?: unknown; // Original error
-  meta?: Meta; // Extra metadata (optional)
-  status?: number; // Optional HTTP status (if applicable)
+  code: Code;       // Stable error code (e.g. "TIMEOUT", "HTTP")
+  message: string;    // Human-readable message
+  cause?: unknown;    // Original error
+  meta?: Meta;        // Extra metadata (optional)
+  status?: number;    // Optional HTTP status (if applicable)
+  retryable: boolean; // Whether the error is safe to retry
+  timestamp: number;  // When the error occurred (ms)
+  stack?: string;     // Stack trace for debugging
 };
 ```
 
 ### Default Rules
 
-If no custom rules are provided, `trybox` applies these default rules:
-
-- **ABORTED**: Detects `AbortError` (e.g., from `AbortController`).
+By default, `tryo` detects:
+- **ABORTED**: Detects `AbortError`.
 - **TIMEOUT**: Detects `TimeoutError`.
-- **HTTP**: Detects objects with `status` or `statusCode` (number).
-- **UNKNOWN**: Fallback for other errors (strings, generic errors).
-
-```typescript
-const result = await runner.run(fetchData);
-
-if (!result.ok) {
-  switch (result.error.code) {
-    case "ABORTED":
-      // Handle cancellation
-      break;
-    case "TIMEOUT":
-      // Handle timeout
-      break;
-    case "HTTP":
-      console.log("Status:", result.error.status);
-      break;
-  }
-}
-```
+- **HTTP**: Detects status codes in error objects.
+- **UNKNOWN**: Fallback for everything else.
 
 ### Custom Rules
 
-You can define custom error rules to map specific exceptions to typed error codes.
+Map specific exceptions to typed error codes using the `rules` option.
 
 ```typescript
-import trybox, { errorRule } from "trybox";
+import tryo, { errorRule } from "tryo";
 
-const runner = trybox({
+const ex = tryo({
   rules: [
-    // Map specific error string to a code
     errorRule
-      .when((e) => e === "foo")
+      .when((e) => e === "unauthorized")
       .toError(() => ({
-        code: "CUSTOM_FOO",
-        message: "Foo happened",
+        code: "AUTH_ERROR",
+        message: "Please login",
       })),
-    // Map class instance
-    errorRule.instance(MyCustomError).toError((e) => ({
-      code: "MY_ERROR",
-      message: e.message,
-      meta: { details: e.details },
-    })),
-  ],
+  ] as const,
 });
 ```
 
-## API
+## API Reference
 
-### `runner.run(fn, options?)`
-
-Executes a single function with retry and error handling.
+### `.run(task, options?)`
+Executes a single task. The `options` can override the instance defaults (except `signal`, which must be passed per call).
 
 ```typescript
-import trybox, { RetryStrategies } from "trybox";
+const result = await ex.run(task, {
+  timeout: 5000,
+  signal: abortController.signal,
+});
+```
 
-await runner.run(fn, {
-  retry: {
-    maxRetries: 3,
-    strategy: RetryStrategies.fixed(1000),
-  },
+### `.all(tasks, options?)`
+Executes multiple tasks with **concurrency control**. Like `Promise.allSettled` but with retries, timeouts, and a worker pool.
+
+```typescript
+const tasks = [() => job(1), () => job(2), () => job(3)];
+
+// Execute 5-at-a-time
+const results = await ex.all(tasks, { concurrency: 5 });
+```
+
+### `.partitionAll(results)`
+Utility to separate successes from failures after an `all()` call.
+
+```typescript
+const { ok, failure, aborted, timeout } = ex.partitionAll(results);
+
+console.log(`Successes: ${ok.length}`);
+console.log(`Errors: ${failure.length}`);
+```
+
+### `.runOrThrow(task, options?)`
+Utility if you prefer exceptions but want the power of `tryo` (retries, breaker, normalization).
+
+```typescript
+const data = await ex.runOrThrow(task); // Returns data or throws TypedError
+```
+
+## Advanced Features
+
+### Concurrency
+The `all()` method includes a worker pool that respects your `concurrency` limit and stops launching new tasks if the `signal` is aborted.
+
+### Circuit Breaker
+If your tasks fail repeatedly, the circuit breaker opens and prevents further calls to protect your downstream services.
+
+```typescript
+const ex = tryo({
+  circuitBreaker: {
+    failureThreshold: 5,
+    resetTimeout: 30000,
+    halfOpenRequests: 2
+  }
+});
+```
+
+### Observability Hooks
+Add hooks for logging or monitoring:
+
+```typescript
+const ex = tryo({
   hooks: {
-    onSuccess: (data) => console.log("Success:", data),
-    onError: (err) => console.error("Error:", err),
-  },
+    onRetry: (attempt, error, delay) => console.log(`Retry ${attempt}...`),
+    onCircuitStateChange: (from, to) => console.log(`Breaker moved: ${from} -> ${to}`),
+  }
 });
 ```
 
-### `runner.runAll(tasks, options?)`
+## Why tryo?
 
-Executes multiple tasks with concurrency control. Returns all results (success or failure).
+1. **No More Try/Catch**: Handle results as data.
+2. **Concurrency Control**: Built-in worker pool for batch operations.
+3. **Normalized Errors**: Stable codes instead of unreliable error messages.
+4. **Resiliency**: Sophisticated retry strategies and circuit breakers out of the box.
+5. **Type Safety**: Full TypeScript support with inference for custom error rules.
 
-```typescript
-const tasks = [
-  () => fetch("/api/1"),
-  () => fetch("/api/2"),
-  () => fetch("/api/3"),
-];
-
-const results = await runner.runAll(tasks, {
-  concurrency: 2,
-});
-```
-
-### `runner.runOrThrowAll(tasks, options?)`
-
-Like `Promise.all` but with concurrency control. Throws the first normalized error if any fails.
-
-```typescript
-try {
-  const data = await runner.runOrThrowAll(tasks, { concurrency: 5 });
-} catch (err) {
-  // err is TypedError
-  console.error(err.code);
-}
-```
-
-## React Example
-
-```typescript
-useEffect(() => {
-  let cancelled = false;
-
-  runner.run(fetchData, {
-    onSuccess: (data) => {
-      if (!cancelled) setData(data);
-    },
-    onError: (err) => {
-      if (err.code === "ABORTED") return;
-      toast.error(err.message);
-    },
-  });
-
-  return () => {
-    cancelled = true;
-  };
-}, []);
-```
-
-## Cancellation and Timeout
-
-- `signal` and `timeout` control how long we wait for the operation to finish.
-- If your `fn` does not use the provided `AbortSignal`, we cannot cancel the underlying I/O magically.
-- The library races the work and can return `ABORTED`/`TIMEOUT` quickly, but it does not terminate the request unless your code cooperates with the `signal`.
-
-```typescript
-const controller = new AbortController();
-const r = await runner.run(fetchData, { signal: controller.signal, timeout: 3000 });
-// If fetchData doesn't use the signal, run() will stop waiting and return TIMEOUT/ABORTED,
-// but the inner request continues unless it handles the signal.
-```
-
-## Circuit Breaker (Runner-level)
-
-- Configuration lives at the Runner level via `trybox({ circuitBreaker: ... })`.
-- Per-call circuit breaker in `RunOptions` is not supported to reduce API surface.
-- Example:
-
-```typescript
-const runner = trybox({
-  circuitBreaker: { failureThreshold: 3, resetTimeout: 1000, halfOpenRequests: 1 },
-});
-```
+---
+License: MIT

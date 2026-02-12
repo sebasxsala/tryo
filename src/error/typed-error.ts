@@ -14,14 +14,21 @@ export abstract class TypedError<
 	readonly cause?: unknown;
 	readonly meta?: Meta;
 	readonly status?: number;
-	readonly timestamp: Date;
+	readonly timestamp: number;
+	readonly retryable: boolean;
 
 	constructor(
 		message: string,
-		opts?: { cause?: unknown; meta?: Meta; status?: number },
+		opts?: {
+			cause?: unknown;
+			meta?: Meta;
+			status?: number;
+			retryable?: boolean;
+		},
 	) {
 		super(message);
-		this.timestamp = new Date();
+		this.timestamp = Date.now();
+		this.retryable = opts?.retryable ?? true;
 		this.name = this.constructor.name;
 		(this as { cause?: unknown }).cause = opts?.cause;
 		(this as { meta?: Meta }).meta = opts?.meta;
@@ -52,13 +59,20 @@ export abstract class TypedError<
 		return Object.assign(this, { cause });
 	}
 
+	// Chainable retryable flag
+	withRetryable(retryable: boolean): this {
+		(this as { retryable: boolean }).retryable = retryable;
+		return this;
+	}
+
 	// Convert to JSON representation
 	toJSON(): Record<string, unknown> {
 		return {
 			name: this.name,
 			code: this.code,
 			message: this.message,
-			timestamp: this.timestamp.toISOString(),
+			timestamp: this.timestamp,
+			retryable: this.retryable,
 			cause: this.cause,
 			stack: this.stack,
 		};
@@ -70,7 +84,10 @@ export class TimeoutError extends TypedError<'TIMEOUT'> {
 	readonly code = 'TIMEOUT' as const;
 
 	constructor(timeout: Milliseconds, cause?: unknown) {
-		super(`Operation timed out after ${timeout}ms`, { cause });
+		super(`Operation timed out after ${timeout}ms`, {
+			cause,
+			retryable: true,
+		});
 	}
 }
 
@@ -78,7 +95,7 @@ export class AbortedError extends TypedError<'ABORTED'> {
 	readonly code = 'ABORTED' as const;
 
 	constructor(reason?: string, cause?: unknown) {
-		super(reason || 'Operation was aborted', { cause });
+		super(reason || 'Operation was aborted', { cause, retryable: false });
 	}
 }
 
@@ -86,7 +103,10 @@ export class CircuitOpenError extends TypedError<'CIRCUIT_OPEN'> {
 	readonly code = 'CIRCUIT_OPEN' as const;
 
 	constructor(resetAfter: Milliseconds, cause?: unknown) {
-		super(`Circuit breaker is open, reset after ${resetAfter}ms`, { cause });
+		super(`Circuit breaker is open, reset after ${resetAfter}ms`, {
+			cause,
+			retryable: false,
+		});
 	}
 }
 
@@ -100,7 +120,7 @@ export class ValidationError extends TypedError<'VALIDATION', ValidationMeta> {
 		public readonly validationErrors: unknown[],
 		cause?: unknown,
 	) {
-		super(message, { cause, meta: { validationErrors } });
+		super(message, { cause, meta: { validationErrors }, retryable: false });
 	}
 }
 
@@ -112,7 +132,7 @@ export class NetworkError extends TypedError<'NETWORK'> {
 		public readonly statusCode?: number,
 		cause?: unknown,
 	) {
-		super(message, { cause, status: statusCode });
+		super(message, { cause, status: statusCode, retryable: true });
 	}
 }
 
@@ -127,7 +147,13 @@ export class HttpError extends TypedError<'HTTP', HttpMeta> {
 		public readonly response?: unknown,
 		cause?: unknown,
 	) {
-		super(message, { cause, status, meta: { response } });
+		const isRetryable = status >= 500 || status === 429;
+		super(message, {
+			cause,
+			status,
+			meta: { response },
+			retryable: isRetryable,
+		});
 	}
 }
 
