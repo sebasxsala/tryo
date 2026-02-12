@@ -15,7 +15,7 @@ La librería normaliza valores desconocidos a un `ResultError` con:
 
 ## Normalizador por defecto
 
-Si no configuras reglas personalizadas, `trybox` aplica automáticamente las siguientes reglas:
+Si no configuras reglas personalizadas, `tryo` aplica automáticamente las siguientes reglas:
 
 - **abort**: Detecta `AbortError` y devuelve `code: "ABORTED"`.
 - **timeout**: Detecta `TimeoutError` y devuelve `code: "TIMEOUT"`.
@@ -27,9 +27,9 @@ Si no configuras reglas personalizadas, `trybox` aplica automáticamente las sig
 Ejemplo de uso de reglas por defecto:
 
 ```typescript
-import trybox from "trybox";
+import tryo from "tryo";
 
-const runner = trybox(); // Usa reglas por defecto
+const runner = tryo(); // Usa reglas por defecto
 
 const result = await runner.run(async () => {
   throw new DOMException("Time out", "TimeoutError");
@@ -42,10 +42,10 @@ if (!result.ok && result.error.code === "TIMEOUT") {
 
 ## Reglas personalizadas
 
-Usa `errorRule` para definir mapeos específicos y `trybox` para aplicarlos.
+Usa `errorRule` para definir mapeos específicos y `tryo` para aplicarlos.
 
 ```typescript
-import trybox, { errorRule } from "trybox";
+import tryo, { errorRule } from "tryo";
 
 class HttpError extends Error {
   constructor(
@@ -57,7 +57,7 @@ class HttpError extends Error {
   }
 }
 
-const runner = trybox({
+const runner = tryo({
   rules: [
     errorRule.instance(HttpError).toError((e) => ({
       code: "HTTP",
@@ -93,5 +93,5 @@ const r = await run(() => fetch("/api"), { signal: controller.signal, timeout: 2
 
 ## Circuit Breaker (a nivel Runner)
 
-- Se configura a nivel Runner: `trybox({ circuitBreaker })`.
+- Se configura a nivel Runner: `tryo({ circuitBreaker })`.
 - No se expone por llamada en `RunOptions` para mantener la API simple.

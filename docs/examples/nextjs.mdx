@@ -3,12 +3,12 @@ title: Next.js
 description: Integration in Next.js routes and components
 ---
 
-## API Route with Trybox
+## API Route with Tryo
 
 ```ts
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { run } from "trybox";
+import { run } from "tryo";
 
 export async function GET(_req: NextRequest) {
   const r = await run(
@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest) {
 ## Server Component with Cancellation
 
 ```tsx
-import { run } from "trybox";
+import { run } from "tryo";
 
 export default async function Page() {
   const r = await run(() => fetch("https://example.com").then((x) => x.json()));

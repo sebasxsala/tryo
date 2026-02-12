@@ -65,7 +65,7 @@ export class ErrorRuleBuilder<T> {
 	}
 
 	// Map to a typed error instance (compatible with existing tests)
-	// The returned rule is usable in createErrorNormalizer/trybox({ rules }).
+	// The returned rule is usable in createErrorNormalizer/tryo({ rules }).
 	toError<
 		const Out extends {
 			code: string;

@@ -1,13 +1,13 @@
 ---
 title: React
-description: Uso de trybox en efectos con cancelación y reintentos
+description: Uso de tryo en efectos con cancelación y reintentos
 ---
 
 ## Efecto con AbortController
 
 ```tsx
 import { useEffect, useState } from "react";
-import { run } from "trybox";
+import { run } from "tryo";
 
 export function Users() {
   const [users, setUsers] = useState<any[]>([]);

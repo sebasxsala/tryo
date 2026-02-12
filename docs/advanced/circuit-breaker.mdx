@@ -6,9 +6,9 @@ description: Preventing failure cascades with open and half-open states
 ## Instance configuration
 
 ```typescript
-import trybox from "trybox";
+import tryo from "tryo";
 
-const runner = trybox({
+const runner = tryo({
   circuitBreaker: {
     failureThreshold: 2,
     resetTimeout: 1000,
@@ -26,7 +26,7 @@ const runner = trybox({
 ## Per call
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 const r = await run(async () => 1, {
   circuitBreaker: { failureThreshold: 3, resetTimeout: 1500 },

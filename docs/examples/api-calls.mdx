@@ -6,7 +6,7 @@ description: HTTP calls with retries, timeout, and error handling
 ## Example
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 const r = await run(() => fetch("/api/items").then((x) => x.json()), {
   retries: 3,

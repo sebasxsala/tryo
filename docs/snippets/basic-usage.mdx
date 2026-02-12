@@ -1,25 +1,25 @@
 ---
 title: Uso básico
-description: Primeros pasos con run, runAll y trybox
+description: Primeros pasos con run, all y tryo
 ---
 
 ## `run` para una tarea
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 const r = await run(() => fetch("/api").then((x) => x.json()));
 if (r.ok) console.log(r.data);
 else console.error(r.error.code);
 ```
 
-## `runAll` para varias tareas
+## `all` para varias tareas
 
 ```typescript
-import { runAll, isSuccess } from "trybox";
+import { all, isSuccess } from "tryo";
 
 const tasks = [() => fetch("/a"), () => fetch("/b")];
-const results = await runAll<Response>(tasks, { concurrency: 2 });
+const results = await all<Response>(tasks, { concurrency: 2 });
 
 const successes = results.filter(isSuccess).map((r) => r.data);
 ```
@@ -27,8 +27,8 @@ const successes = results.filter(isSuccess).map((r) => r.data);
 ## Reusar un runner
 
 ```typescript
-import trybox from "trybox";
-export const runner = trybox({ ignoreAbort: true });
+import tryo from "tryo";
+export const runner = tryo({ ignoreAbort: true });
 
 const r = await runner.run(() => fetch("/api"));
 ```

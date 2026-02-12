@@ -6,7 +6,7 @@ description: From try/catch and Promise.all to safe and controlled results
 ## From try/catch to `run`
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 const r = await run(() => fetch("/api").then((x) => x.json()));
 if (r.ok) {
@@ -16,13 +16,13 @@ if (r.ok) {
 }
 ```
 
-## From `Promise.all` to `runAll`
+## From `Promise.all` to `all`
 
 ```typescript
-import { runAll } from "trybox";
+import { all } from "tryo";
 
 const tasks = [() => fetch("/a"), () => fetch("/b")];
-const results = await runAll<Response>(tasks, {
+const results = await all<Response>(tasks, {
   concurrency: 2,
   mode: "settle",
 });

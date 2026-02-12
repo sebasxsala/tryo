@@ -6,23 +6,23 @@ description: Generic types, helpers, and rules with type inference
 ## Generics in `run`
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 type Item = { id: string };
 const r = await run<Item>(() => fetch("/api").then((x) => x.json()));
 ```
 
-## Result helpers in `runAll`
+## Result helpers in `all`
 
 ```typescript
 import {
-  runAll,
+  all,
   isSuccess,
   type SuccessResult,
   type ErrorResult,
-} from "trybox";
+} from "tryo";
 
-const rs = await runAll<number>([async () => 1]);
+const rs = await all<number>([async () => 1]);
 const ok: SuccessResult<number>[] = rs.filter(isSuccess);
 const ko: ErrorResult<any>[] = rs.filter((r) => r.status === "error");
 ```
@@ -30,11 +30,11 @@ const ko: ErrorResult<any>[] = rs.filter((r) => r.status === "error");
 ## Rules and types
 
 ```typescript
-import trybox, { errorRule } from "trybox";
+import tryo, { errorRule } from "tryo";
 
 type MyError = { code: "HTTP"; message: string; status?: number };
 
-const runner = trybox({
+const runner = tryo({
   rules: [
     errorRule
       .when(

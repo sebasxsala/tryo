@@ -1,11 +1,11 @@
 ---
-title: runAllOrThrow
+title: allOrThrow
 description: Ejecuta múltiples tareas y lanza al primer fallo
 ---
 
 ## Firma
 
-`runAllOrThrow<T>(tasks, options?): Promise<T[]>`
+`allOrThrow<T>(tasks, options?): Promise<T[]>`
 
 ## Opciones
 
@@ -15,9 +15,9 @@ description: Ejecuta múltiples tareas y lanza al primer fallo
 ## Ejemplo
 
 ```typescript
-import { runAllOrThrow } from "trybox";
+import { allOrThrow } from "tryo";
 
-const data = await runAllOrThrow<string>(
+const data = await allOrThrow<string>(
   [
     () => fetch("/a").then((r) => r.text()),
     () => fetch("/b").then((r) => r.text()),

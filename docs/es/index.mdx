@@ -6,7 +6,7 @@ description: "Manejo de errores tipado para TypeScript con lógica de reintentos
 <img className="block dark:hidden" src="/logo/light.svg" alt="Logo Light" />
 <img className="hidden dark:block" src="/logo/dark.svg" alt="Logo Dark" />
 
-## Bienvenido a Trybox
+## Bienvenido a Tryo
 
 Una librería moderna y tipada para el manejo de errores que hace que las operaciones asíncronas sean predecibles y resilientes.
 
@@ -14,7 +14,7 @@ Una librería moderna y tipada para el manejo de errores que hace que las operac
   <Card title="Inicio Rápido" icon="rocket" href="/es/quickstart">
     Empieza en menos de 5 minutos
   </Card>
-  <Card title="Referencia de API" icon="code" href="/es/api-reference/trybox">
+  <Card title="Referencia de API" icon="code" href="/es/api-reference/tryo">
     Explora la documentación completa de la API
   </Card>
   <Card title="Ejemplos" icon="lightbulb" href="/es/examples/react">
@@ -47,9 +47,10 @@ Una librería moderna y tipada para el manejo de errores que hace que las operac
     Backoff exponencial integrado con jitter para prevenir el problema de thundering herd.
     ```typescript
     await runner.run(() => unstableApi(), {
-      retries: 3,
-      retryDelay: (attempt) => Math.pow(2, attempt) * 1000,
-      jitter: true
+      retry: {
+        maxRetries: 3,
+        strategy: RetryStrategies.exponential(1000),
+      }
     });
     ```
   </Accordion>
@@ -58,8 +59,7 @@ Una librería moderna y tipada para el manejo de errores que hace que las operac
     Ejecuta múltiples operaciones con paralelismo controlado.
     ```typescript
     await runner.all(tasks, { 
-      concurrency: 5,
-      mode: 'fail-fast' 
+      concurrency: 5 
     });
     ```
   </Accordion>
@@ -79,15 +79,15 @@ Una librería moderna y tipada para el manejo de errores que hace que las operac
 <CodeGroup>
 
 ```bash npm
-npm install trybox
+npm install tryo
 ```
 
 ```bash pnpm
-pnpm add trybox
+pnpm add tryo
 ```
 
 ```bash yarn
-yarn add trybox
+yarn add tryo
 ```
 
 </CodeGroup>
@@ -95,14 +95,18 @@ yarn add trybox
 ## Ejemplo Rápido
 
 ```typescript
-import trybox from "trybox";
+import tryo from "tryo";
 
-const runner = trybox();
+const runner = tryo();
 
 const result = await runner.run(() => fetch("https://api.example.com/users"), {
-  retries: 3,
-  retryDelay: 1000,
-  onError: (error) => console.error(error),
+  retry: {
+    maxRetries: 3,
+    strategy: RetryStrategies.fixed(1000),
+  },
+  hooks: {
+    onError: (error) => console.error(error),
+  }
 });
 
 if (result.ok) {
@@ -112,7 +116,7 @@ if (result.ok) {
 ```
 
 <Note>
-  **Consejo Pro:** Usa `trybox()` una vez y reutilízalo en tu aplicación para un
+  **Consejo Pro:** Usa `tryo()` una vez y reutilízalo en tu aplicación para un
   manejo de errores consistente.
 </Note>
 

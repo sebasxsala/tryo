@@ -1,46 +1,46 @@
 ---
 title: "Inicio Rápido"
-description: "Empieza a usar Trybox en minutos"
+description: "Empieza a usar Tryo en minutos"
 ---
 
 ## Instalación
 
-Instala Trybox usando tu gestor de paquetes favorito:
+Instala Tryo usando tu gestor de paquetes favorito:
 
 <CodeGroup>
 ```bash npm
-npm install trybox
+npm install tryo
 ```
 
 ```bash pnpm
-pnpm add trybox
+pnpm add tryo
 ```
 
 ```bash yarn
-yarn add trybox
+yarn add tryo
 ```
 
 ```bash bun
-bun add trybox
+bun add tryo
 ```
 
 </CodeGroup>
 
 ## Uso Básico
 
-Trybox proporciona una forma sencilla de manejar operaciones asíncronas de manera segura.
+Tryo proporciona una forma sencilla de manejar operaciones asíncronas de manera segura.
 
 ### Usando `run` directamente
 
 Para casos de uso simples, puedes usar la función `run` directamente:
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 const result = await run(
   () => fetch("https://api.example.com/data").then((res) => res.json()),
   {
-    retries: 3,
+    retry: { maxRetries: 3, strategy: RetryStrategies.fixed(1000) },
     timeout: 5000,
   }
 );
@@ -52,21 +52,24 @@ if (result.ok) {
 }
 ```
 
-### Usando `trybox`
+### Usando `tryo`
 
 Para configuraciones más avanzadas y reutilización, crea una instancia de `Runner`:
 
 ```typescript
-import trybox from "trybox";
+import tryo from "tryo";
 
 // Crea un runner reutilizable con configuración por defecto
-const runner = trybox({
-  retries: 2,
+const runner = tryo({
+  retry: {
+    maxRetries: 2,
+    strategy: RetryStrategies.fixed(1000),
+  },
   timeout: 10000,
-  // Reglas globales de manejo de errores
-  onError: (error) => {
-    // Log a tu servicio de monitoreo
-    console.error("Manejador de error global:", error);
+  hooks: {
+    onError: (error) => {
+      console.error("Manejador de error global:", error);
+    },
   },
 });
 
@@ -76,7 +79,7 @@ const result = await runner.run(() => complexOperation());
 
 ## Siguientes Pasos
 
-Ahora que tienes Trybox instalado, explora estas características clave:
+Ahora que tienes Tryo instalado, explora estas características clave:
 
 <CardGroup cols={2}>
   <Card
@@ -84,7 +87,7 @@ Ahora que tienes Trybox instalado, explora estas características clave:
     icon="shield-check"
     href="/es/concepts/error-handling"
   >
-    Aprende cómo Trybox normaliza y maneja los errores.
+    Aprende cómo Tryo normaliza y maneja los errores.
   </Card>
   <Card
     title="Lógica de Reintentos"
@@ -97,6 +100,6 @@ Ahora que tienes Trybox instalado, explora estas características clave:
     Ejecuta múltiples tareas con paralelismo controlado.
   </Card>
   <Card title="Integración con React" icon="react" href="/es/examples/react">
-    Mira cómo usar Trybox con hooks de React.
+    Mira cómo usar Tryo con hooks de React.
   </Card>
 </CardGroup>

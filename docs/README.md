@@ -1,8 +1,8 @@
-# Trybox Documentation
+# Tryo Documentation
 
-This repository contains the source code for the [Trybox](https://github.com/sebastiansala/trybox) documentation, built with [Mintlify](https://mintlify.com/).
+This repository contains the source code for the [Tryo](https://github.com/sebastiansala/tryo) documentation, built with [Mintlify](https://mintlify.com/).
 
-Trybox is a TypeScript library for resilient task execution, featuring retries, circuit breakers, and concurrency control.
+Tryo is a TypeScript library for resilient task execution, featuring retries, circuit breakers, and concurrency control.
 
 ## Running Locally
 

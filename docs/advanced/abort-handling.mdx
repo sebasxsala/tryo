@@ -6,7 +6,7 @@ description: Cancellation with AbortSignal and abort error handling
 ## Recommended pattern
 
 ```typescript
-import { run } from "trybox";
+import { run } from "tryo";
 
 const controller = new AbortController();
 const r = await run(() => fetch("/api", { signal: controller.signal }), {

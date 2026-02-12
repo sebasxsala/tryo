@@ -6,7 +6,7 @@ description: "Type-safe error handling for TypeScript with retry logic and concu
 <img className="block dark:hidden" src="/logo/light.svg" alt="Logo Light" />
 <img className="hidden dark:block" src="/logo/dark.svg" alt="Logo Dark" />
 
-## Welcome to Trybox
+## Welcome to Tryo
 
 A modern, type-safe error handling library that makes async operations predictable and resilient.
 
@@ -14,7 +14,7 @@ A modern, type-safe error handling library that makes async operations predictab
   <Card title="Quick Start" icon="rocket" href="/quickstart">
     Get up and running in less than 5 minutes
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/trybox">
+  <Card title="API Reference" icon="code" href="/api-reference/tryo">
     Explore the complete API documentation
   </Card>
   <Card title="Examples" icon="lightbulb" href="/examples/react">
@@ -47,9 +47,10 @@ A modern, type-safe error handling library that makes async operations predictab
     Built-in exponential backoff with jitter to prevent thundering herd.
     ```typescript
     await runner.run(() => unstableApi(), {
-      retries: 3,
-      retryDelay: (attempt) => Math.pow(2, attempt) * 1000,
-      jitter: true
+      retry: {
+        maxRetries: 3,
+        strategy: RetryStrategies.exponential(1000),
+      }
     });
     ```
   </Accordion>
@@ -58,8 +59,7 @@ A modern, type-safe error handling library that makes async operations predictab
     Run multiple operations with controlled parallelism.
     ```typescript
     await runner.all(tasks, { 
-      concurrency: 5,
-      mode: 'fail-fast' 
+      concurrency: 5 
     });
     ```
   </Accordion>
@@ -79,15 +79,15 @@ A modern, type-safe error handling library that makes async operations predictab
 <CodeGroup>
 
 ```bash npm
-npm install trybox
+npm install tryo
 ```
 
 ```bash pnpm
-pnpm add trybox
+pnpm add tryo
 ```
 
 ```bash yarn
-yarn add trybox
+yarn add tryo
 ```
 
 </CodeGroup>
@@ -95,14 +95,18 @@ yarn add trybox
 ## Quick Example
 
 ```typescript
-import trybox from "trybox";
+import tryo from "tryo";
 
-const runner = trybox();
+const runner = tryo();
 
 const result = await runner.run(() => fetch("https://api.example.com/users"), {
-  retries: 3,
-  retryDelay: 1000,
-  onError: (error) => console.error(error),
+  retry: {
+    maxRetries: 3,
+    strategy: RetryStrategies.fixed(1000),
+  },
+  hooks: {
+    onError: (error) => console.error(error),
+  }
 });
 
 if (result.ok) {
@@ -112,7 +116,7 @@ if (result.ok) {
 ```
 
 <Note>
-  **Pro tip:** Use `trybox()` once and reuse it across your app for consistent
+  **Pro tip:** Use `tryo()` once and reuse it across your app for consistent
   error handling.
 </Note>
 

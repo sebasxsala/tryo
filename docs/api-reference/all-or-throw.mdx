@@ -1,11 +1,11 @@
 ---
-title: runAllOrThrow
+title: allOrThrow
 description: Executes multiple tasks and throws on the first failure
 ---
 
 ## Signature
 
-`runAllOrThrow<T>(tasks, options?): Promise<T[]>`
+`allOrThrow<T>(tasks, options?): Promise<T[]>`
 
 ## Options
 
@@ -15,9 +15,9 @@ description: Executes multiple tasks and throws on the first failure
 ## Example
 
 ```typescript
-import { runAllOrThrow } from "trybox";
+import { allOrThrow } from "tryo";
 
-const data = await runAllOrThrow<string>(
+const data = await allOrThrow<string>(
   [
     () => fetch("/a").then((r) => r.text()),
     () => fetch("/b").then((r) => r.text()),

@@ -1,0 +1,42 @@
+---
+title: all
+description: Executes multiple tasks with concurrency and execution modes
+---
+
+## Signature
+
+`all<T>(tasks, options?): Promise<TryoResult<T, E>[]>`
+
+## Options
+
+- Inherits all `run` options
+- `concurrency`: maximum simultaneous tasks (default: unbounded)
+
+## Example
+
+```typescript
+import { all, tryo } from 'tryo'
+
+const tasks = [
+  () => fetch('/a').then(r => r.text()),
+  () => fetch('/b').then(r => r.text()),
+]
+
+const results = await all<string>(tasks, {
+  concurrency: 2,
+})
+
+// Or using an instance
+const ex = tryo()
+const resultsInstance = await ex.all(tasks)
+const { ok, failure } = ex.partitionAll(resultsInstance)
+```
+
+## Result per Item
+
+Each item in the returned array is a `TryoResult`:
+
+- **Success**: `{ ok: true, data: T, error: null, metrics: TryoMetrics }`
+- **Failure**: `{ ok: false, data: null, error: TypedError, metrics: TryoMetrics }`
+
+The array always has the same length as the input tasks array. If a task wasn't started due to an early abort, it will be returned as an `ABORTED` error result.

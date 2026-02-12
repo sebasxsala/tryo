@@ -6,7 +6,7 @@ description: Defining mapping rules and specific error types
 ## Instance rule
 
 ```typescript
-import trybox, { errorRule } from "trybox";
+import tryo, { errorRule } from "tryo";
 
 class HttpError extends Error {
   constructor(
@@ -26,7 +26,7 @@ type HttpAppError = {
   cause?: unknown;
 };
 
-const runner = trybox({
+const runner = tryo({
   rules: [
     errorRule.instance(HttpError).toError<HttpAppError>((e) => ({
       code: "HTTP",
@@ -42,7 +42,7 @@ const runner = trybox({
 ## Custom predicate
 
 ```typescript
-const runner2 = trybox({
+const runner2 = tryo({
   rules: [
     errorRule
       .when((x): x is { code: string } => typeof (x as any)?.code === "string")
