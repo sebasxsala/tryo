@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { tryo } from '../src/core/tryo';
+import { type DefaultError, tryo } from '../src/core/tryo';
 import { HttpError, TypedError } from '../src/error/typed-error';
 
 describe('Error normalization', () => {
@@ -12,7 +12,7 @@ describe('Error normalization', () => {
 			}
 		}
 
-		const ex = tryo();
+		const ex = tryo<MyTypedError | DefaultError>();
 		const r = await ex.run(async () => {
 			throw new MyTypedError();
 		});
