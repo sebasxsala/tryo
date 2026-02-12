@@ -15,7 +15,6 @@ export {
 	type RulesMode,
 	type TryoOptions,
 	tryo,
-	tryo as default,
 } from './core/tryo';
 export { errorRule } from './error/error-rules';
 export { RetryStrategies } from './retry/retry-strategies';

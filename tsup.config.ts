@@ -6,9 +6,6 @@ export default defineConfig({
 	dts: true,
 	minify: true,
 	clean: true,
-	treeshake: true,
-	metafile: true,
-	target: 'es2020',
-	sourcemap: true,
 	splitting: false,
+	target: 'es2019',
 });
