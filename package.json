@@ -1,5 +1,5 @@
 {
-	"name": "trybox",
+	"name": "tryo",
 	"version": "0.13.0",
 	"description": "Run sync/async functions and return a typed Result instead of throwing.",
 	"type": "module",
@@ -50,8 +50,8 @@
 		"typescript": "^5.0.0"
 	},
 	"license": "MIT",
-	"homepage": "https://trybox-docs.pages.dev/",
-	"bugs": "https://github.com/sebasxsala/trybox/issues",
+	"homepage": "https://tryo-docs.pages.dev/",
+	"bugs": "https://github.com/sebasxsala/tryo/issues",
 	"author": {
 		"name": "sebasxsala",
 		"url": "https://github.com/sebasxsala"
