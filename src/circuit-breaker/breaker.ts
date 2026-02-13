@@ -3,50 +3,50 @@
  * Provides circuit breaker pattern with type safety and observability
  */
 
-import { CircuitOpenError, type TypedError } from '../error/typed-error';
+import { CircuitOpenError, type TypedError } from '../error/typed-error'
 import {
 	asMilliseconds,
 	asRetryCount,
 	type Milliseconds,
 	type RetryCount,
-} from '../types/branded-types';
+} from '../types/branded-types'
 
 // Circuit breaker configuration
 export interface CircuitBreakerConfig<E extends TypedError = TypedError> {
 	/** Number of consecutive failures before opening circuit */
-	readonly failureThreshold: number;
+	readonly failureThreshold: number
 
 	/** How long to wait before attempting to close circuit */
-	readonly resetTimeout: number;
+	readonly resetTimeout: number
 
 	/** Number of requests allowed in half-open state */
-	readonly halfOpenRequests: number;
+	readonly halfOpenRequests: number
 
 	/** Optional function to determine if error should count as failure */
-	readonly shouldCountAsFailure?: (error: E) => boolean;
+	readonly shouldCountAsFailure?: (error: E) => boolean
 }
 
 // Circuit breaker state
-export type CircuitState = 'closed' | 'open' | 'half-open';
+export type CircuitState = 'closed' | 'open' | 'half-open'
 
 // Internal state tracking
 interface CircuitBreakerInternalState {
-	readonly state: CircuitState;
-	readonly failureCount: RetryCount;
-	readonly halfOpenCount: RetryCount;
-	readonly lastFailureTime?: Date;
-	readonly nextAttemptTime?: Date;
+	readonly state: CircuitState
+	readonly failureCount: RetryCount
+	readonly halfOpenCount: RetryCount
+	readonly lastFailureTime?: Date
+	readonly nextAttemptTime?: Date
 }
 
 // Modern circuit breaker implementation
 export class CircuitBreaker<E extends TypedError = TypedError> {
-	private state: CircuitBreakerInternalState;
+	private state: CircuitBreakerInternalState
 	private readonly config: {
-		failureThreshold: RetryCount;
-		resetTimeout: Milliseconds;
-		halfOpenRequests: RetryCount;
-		shouldCountAsFailure?: (error: E) => boolean;
-	};
+		failureThreshold: RetryCount
+		resetTimeout: Milliseconds
+		halfOpenRequests: RetryCount
+		shouldCountAsFailure?: (error: E) => boolean
+	}
 
 	constructor(config: CircuitBreakerConfig<E>) {
 		this.config = {
@@ -54,30 +54,30 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 			resetTimeout: asMilliseconds(config.resetTimeout),
 			halfOpenRequests: asRetryCount(config.halfOpenRequests),
 			shouldCountAsFailure: config.shouldCountAsFailure,
-		};
+		}
 		this.state = {
 			state: 'closed',
 			failureCount: 0 as RetryCount,
 			halfOpenCount: 0 as RetryCount,
-		};
+		}
 	}
 
 	// Check if execution is allowed
 	async canExecute(): Promise<boolean> {
-		this.updateStateIfNeeded();
+		this.updateStateIfNeeded()
 		if (this.state.state === 'open') {
-			return false;
+			return false
 		}
 		if (this.state.state === 'half-open') {
 			if (this.state.halfOpenCount >= this.config.halfOpenRequests) {
-				return false;
+				return false
 			}
 			this.state = {
 				...this.state,
 				halfOpenCount: (this.state.halfOpenCount + 1) as RetryCount,
-			};
+			}
 		}
-		return true;
+		return true
 	}
 
 	// Record successful execution
@@ -88,8 +88,8 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 				this.state = {
 					...this.state,
 					failureCount: 0 as RetryCount,
-				};
-				break;
+				}
+				break
 
 			case 'half-open':
 				// Close circuit on first success in half-open
@@ -97,28 +97,28 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 					state: 'closed',
 					failureCount: 0 as RetryCount,
 					halfOpenCount: 0 as RetryCount,
-				};
-				break;
+				}
+				break
 
 			case 'open':
 				// Should not happen, but handle gracefully
-				break;
+				break
 		}
 	}
 
 	// Record failed execution
 	async recordFailure(error: E): Promise<void> {
-		const shouldCount = this.config.shouldCountAsFailure?.(error) ?? true;
+		const shouldCount = this.config.shouldCountAsFailure?.(error) ?? true
 
 		if (!shouldCount) {
-			return;
+			return
 		}
 
-		const now = new Date();
+		const now = new Date()
 
 		switch (this.state.state) {
 			case 'closed': {
-				const newFailureCount = (this.state.failureCount + 1) as RetryCount;
+				const newFailureCount = (this.state.failureCount + 1) as RetryCount
 
 				if (newFailureCount >= this.config.failureThreshold) {
 					// Open circuit
@@ -128,16 +128,16 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 						halfOpenCount: 0 as RetryCount,
 						lastFailureTime: now,
 						nextAttemptTime: new Date(now.getTime() + this.config.resetTimeout),
-					};
+					}
 				} else {
 					// Increment failure count
 					this.state = {
 						...this.state,
 						failureCount: newFailureCount,
 						lastFailureTime: now,
-					};
+					}
 				}
-				break;
+				break
 			}
 
 			case 'half-open':
@@ -148,8 +148,8 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 					halfOpenCount: 0 as RetryCount,
 					lastFailureTime: now,
 					nextAttemptTime: new Date(now.getTime() + this.config.resetTimeout),
-				};
-				break;
+				}
+				break
 
 			case 'open':
 				// Already open, just update failure time
@@ -157,18 +157,18 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 					...this.state,
 					lastFailureTime: now,
 					nextAttemptTime: new Date(now.getTime() + this.config.resetTimeout),
-				};
-				break;
+				}
+				break
 		}
 	}
 
 	// Get current circuit state
 	getState(): CircuitBreakerState {
-		this.updateStateIfNeeded();
+		this.updateStateIfNeeded()
 		return {
 			...this.state,
 			canExecute: this.state.state !== 'open',
-		};
+		}
 	}
 
 	// Create error for when circuit is open
@@ -177,9 +177,9 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 			? asMilliseconds(
 					Math.max(0, this.state.nextAttemptTime.getTime() - Date.now()),
 				)
-			: this.config.resetTimeout;
+			: this.config.resetTimeout
 
-		return new CircuitOpenError(resetAfter);
+		return new CircuitOpenError(resetAfter)
 	}
 
 	// Force circuit to specific state (for testing/maintenance)
@@ -188,7 +188,7 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 			state,
 			failureCount: 0 as RetryCount,
 			halfOpenCount: 0 as RetryCount,
-		};
+		}
 	}
 
 	// Reset circuit to closed state
@@ -197,20 +197,20 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 			state: 'closed',
 			failureCount: 0 as RetryCount,
 			halfOpenCount: 0 as RetryCount,
-		};
+		}
 	}
 
 	// Update state based on time
 	private updateStateIfNeeded(): void {
 		if (this.state.state === 'open' && this.state.nextAttemptTime) {
-			const now = new Date();
+			const now = new Date()
 			if (now >= this.state.nextAttemptTime) {
 				// Move to half-open state
 				this.state = {
 					...this.state,
 					state: 'half-open',
 					halfOpenCount: 0 as RetryCount,
-				};
+				}
 			}
 		}
 	}
@@ -218,10 +218,10 @@ export class CircuitBreaker<E extends TypedError = TypedError> {
 
 // Circuit breaker state information
 export interface CircuitBreakerState {
-	readonly state: CircuitState;
-	readonly failureCount: RetryCount;
-	readonly halfOpenCount: RetryCount;
-	readonly lastFailureTime?: Date;
-	readonly nextAttemptTime?: Date;
-	readonly canExecute: boolean;
+	readonly state: CircuitState
+	readonly failureCount: RetryCount
+	readonly halfOpenCount: RetryCount
+	readonly lastFailureTime?: Date
+	readonly nextAttemptTime?: Date
+	readonly canExecute: boolean
 }

@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test'
 
-import { tryo } from '../src/core/tryo';
-import { errorRule } from '../src/error/error-rules';
+import { tryo } from '../src/core/tryo'
+import { errorRule } from '../src/error/error-rules'
 
 describe('Executor.withConfig', () => {
 	it('preserves existing error normalization by default', async () => {
@@ -14,16 +14,16 @@ describe('Executor.withConfig', () => {
 						message: 'Custom error',
 					})),
 			],
-		});
+		})
 
-		const derived = ex.withConfig({ timeout: 1 });
+		const derived = ex.withConfig({ timeout: 1 })
 		const r = await derived.run(async () => {
-			throw 'custom';
-		});
+			throw 'custom'
+		})
 
-		expect(r.ok).toBe(false);
+		expect(r.ok).toBe(false)
 		if (!r.ok) {
-			expect(r.error.code).toBe('CUSTOM_ERROR');
+			expect(r.error.code).toBe('CUSTOM_ERROR')
 		}
-	});
-});
+	})
+})

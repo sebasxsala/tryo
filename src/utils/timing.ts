@@ -3,7 +3,7 @@
  * Provides enhanced utilities with type safety
  */
 
-import type { Milliseconds } from '../types/branded-types';
+import type { Milliseconds } from '../types/branded-types'
 
 // Enhanced sleep function with cancellation support
 export const sleep = (
@@ -12,31 +12,31 @@ export const sleep = (
 ): Promise<void> => {
 	return new Promise((resolve, reject) => {
 		if (signal?.aborted) {
-			reject(new DOMException('Aborted', 'AbortError'));
-			return;
+			reject(new DOMException('Aborted', 'AbortError'))
+			return
 		}
 
 		const cleanup = (onAbort?: () => void) => {
 			if (signal && onAbort) {
-				signal.removeEventListener('abort', onAbort);
+				signal.removeEventListener('abort', onAbort)
 			}
-		};
+		}
 
-		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		let timeoutId: ReturnType<typeof setTimeout> | undefined
 		const onAbort = () => {
-			if (timeoutId) clearTimeout(timeoutId);
-			cleanup(onAbort);
-			reject(new DOMException('Aborted', 'AbortError'));
-		};
+			if (timeoutId) clearTimeout(timeoutId)
+			cleanup(onAbort)
+			reject(new DOMException('Aborted', 'AbortError'))
+		}
 
 		timeoutId = setTimeout(() => {
-			cleanup(onAbort);
-			resolve();
-		}, ms as number);
+			cleanup(onAbort)
+			resolve()
+		}, ms as number)
 
-		signal?.addEventListener('abort', onAbort, { once: true });
-	});
-};
+		signal?.addEventListener('abort', onAbort, { once: true })
+	})
+}
 
 // Enhanced timeout with promise race
 export const withTimeout = <T>(
@@ -47,46 +47,46 @@ export const withTimeout = <T>(
 ): Promise<T> => {
 	return new Promise<T>((resolve, reject) => {
 		if (signal?.aborted) {
-			reject(new DOMException('Aborted', 'AbortError'));
-			return;
+			reject(new DOMException('Aborted', 'AbortError'))
+			return
 		}
 
-		let settled = false;
+		let settled = false
 		const timeoutId = setTimeout(() => {
-			settled = true;
-			cleanup();
+			settled = true
+			cleanup()
 			reject(
 				onTimeout?.() ?? new Error(`Operation timed out after ${timeoutMs}ms`),
-			);
-		}, timeoutMs);
+			)
+		}, timeoutMs)
 
 		const onAbort = () => {
-			if (settled) return;
-			settled = true;
-			cleanup();
-			reject(new DOMException('Aborted', 'AbortError'));
-		};
+			if (settled) return
+			settled = true
+			cleanup()
+			reject(new DOMException('Aborted', 'AbortError'))
+		}
 
 		const cleanup = () => {
-			clearTimeout(timeoutId);
-			signal?.removeEventListener('abort', onAbort);
-		};
+			clearTimeout(timeoutId)
+			signal?.removeEventListener('abort', onAbort)
+		}
 
-		signal?.addEventListener('abort', onAbort, { once: true });
+		signal?.addEventListener('abort', onAbort, { once: true })
 
 		promise.then(
 			(value) => {
-				if (settled) return;
-				settled = true;
-				cleanup();
-				resolve(value);
+				if (settled) return
+				settled = true
+				cleanup()
+				resolve(value)
 			},
 			(error) => {
-				if (settled) return;
-				settled = true;
-				cleanup();
-				reject(error);
+				if (settled) return
+				settled = true
+				cleanup()
+				reject(error)
 			},
-		);
-	});
-};
+		)
+	})
+}

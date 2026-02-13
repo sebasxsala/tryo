@@ -1,53 +1,53 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test'
 
-import { type DefaultError, tryo } from '../src/core/tryo';
-import { HttpError, TypedError } from '../src/error/typed-error';
+import { type DefaultError, tryo } from '../src/core/tryo'
+import { HttpError, TypedError } from '../src/error/typed-error'
 
 describe('Error normalization', () => {
 	it('preserves thrown TypedError instances', async () => {
 		class MyTypedError extends TypedError<'MY_CODE', { foo: string }> {
-			readonly code = 'MY_CODE' as const;
+			readonly code = 'MY_CODE' as const
 			constructor() {
-				super('boom', { meta: { foo: 'bar' } });
+				super('boom', { meta: { foo: 'bar' } })
 			}
 		}
 
-		const ex = tryo<MyTypedError | DefaultError>();
+		const ex = tryo<MyTypedError | DefaultError>()
 		const r = await ex.run(async () => {
-			throw new MyTypedError();
-		});
+			throw new MyTypedError()
+		})
 
-		expect(r.ok).toBe(false);
+		expect(r.ok).toBe(false)
 		if (!r.ok) {
-			expect(r.error.code).toBe('MY_CODE');
-			expect(r.error.message).toBe('boom');
-			expect(r.error.meta).toEqual({ foo: 'bar' });
+			expect(r.error.code).toBe('MY_CODE')
+			expect(r.error.message).toBe('boom')
+			expect(r.error.meta).toEqual({ foo: 'bar' })
 		}
-	});
+	})
 
 	it('keeps HttpError code and status', async () => {
-		const ex = tryo();
+		const ex = tryo()
 		const r = await ex.run(async () => {
-			throw new HttpError('bad', 500);
-		});
+			throw new HttpError('bad', 500)
+		})
 
-		expect(r.ok).toBe(false);
+		expect(r.ok).toBe(false)
 		if (!r.ok) {
-			expect(r.error.code).toBe('HTTP');
-			expect(r.error.status).toBe(500);
+			expect(r.error.code).toBe('HTTP')
+			expect(r.error.status).toBe(500)
 		}
-	});
+	})
 
 	it('maps plain { status } objects to HTTP when status >= 400', async () => {
-		const ex = tryo();
+		const ex = tryo()
 		const r = await ex.run(async () => {
-			throw { status: 500, message: 'server' };
-		});
+			throw { status: 500, message: 'server' }
+		})
 
-		expect(r.ok).toBe(false);
+		expect(r.ok).toBe(false)
 		if (!r.ok) {
-			expect(r.error.code).toBe('HTTP');
-			expect(r.error.status).toBe(500);
+			expect(r.error.code).toBe('HTTP')
+			expect(r.error.status).toBe(500)
 		}
-	});
-});
+	})
+})

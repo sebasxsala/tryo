@@ -3,11 +3,11 @@
  * Provides ready-to-use error normalization rules
  */
 
-import { BuiltinRules, createErrorRule } from './error-builder';
-import type { ErrorRule } from './error-normalizer';
+import { BuiltinRules, createErrorRule } from './error-builder'
+import type { ErrorRule } from './error-normalizer'
 
 // Built-in error rules export
-export { BuiltinRules };
+export { BuiltinRules }
 
 // Combined built-in rules array
 export const builtInRules: ErrorRule[] = [
@@ -17,10 +17,10 @@ export const builtInRules: ErrorRule[] = [
 	BuiltinRules.http,
 	BuiltinRules.network,
 	BuiltinRules.unknown,
-];
+]
 
 // Export createErrorRule for convenience
-export { createErrorRule };
+export { createErrorRule }
 
 // Error rule factory for creating custom rules
 export const errorRule = {
@@ -29,7 +29,7 @@ export const errorRule = {
 
 	instance: <T extends new (...args: unknown[]) => unknown>(ErrorClass: T) =>
 		createErrorRule.instance(ErrorClass),
-} as const;
+} as const
 
 // Default error rule set
-export const defaultRules = builtInRules;
+export const defaultRules = builtInRules

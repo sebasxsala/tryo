@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'bun:test';
-import type { TryoOptions } from '../src/core/tryo';
-import { tryo } from '../src/core/tryo';
-import { errorRule } from '../src/error/error-rules';
-import { sleep } from '../src/utils/timing';
+import { describe, expect, it } from 'bun:test'
+import type { TryoOptions } from '../src/core/tryo'
+import { tryo } from '../src/core/tryo'
+import { errorRule } from '../src/error/error-rules'
+import { sleep } from '../src/utils/timing'
 
 describe('rulesMode default behavior', () => {
 	it('extends default rules when rulesMode is undefined (default)', async () => {
@@ -16,34 +16,34 @@ describe('rulesMode default behavior', () => {
 					})),
 			],
 			// rulesMode is undefined, should default to "extend"
-		} as TryoOptions);
+		} as TryoOptions)
 
 		// 1. Check custom rule
 		const resultCustom = await ex.run(async () => {
-			throw 'custom';
-		});
-		expect(resultCustom.ok).toBe(false);
+			throw 'custom'
+		})
+		expect(resultCustom.ok).toBe(false)
 		if (!resultCustom.ok) {
-			expect(resultCustom.error.code).toBe('CUSTOM_ERROR');
+			expect(resultCustom.error.code).toBe('CUSTOM_ERROR')
 		}
 
 		// 2. Check default rule (e.g. Timeout)
 		const resultTimeout = await ex.run(
 			async () => {
-				await sleep(50);
-				return 'done';
+				await sleep(50)
+				return 'done'
 			},
 			{ timeout: 10 },
-		);
+		)
 
 		// If default rules are present, it should be TIMEOUT.
 		// If they were replaced, it would be UNKNOWN (or fallback).
-		expect(resultTimeout.ok).toBe(false);
+		expect(resultTimeout.ok).toBe(false)
 		if (!resultTimeout.ok) {
 			// NOTE: run() internal logic throws a special timeout error that matches default rules.
-			expect(resultTimeout.error.code).toBe('TIMEOUT');
+			expect(resultTimeout.error.code).toBe('TIMEOUT')
 		}
-	});
+	})
 
 	it("replaces default rules when rulesMode is 'replace'", async () => {
 		const ex = tryo({
@@ -56,15 +56,15 @@ describe('rulesMode default behavior', () => {
 					})),
 			],
 			rulesMode: 'replace',
-		} as TryoOptions);
+		} as TryoOptions)
 
 		// 1. Check custom rule
 		const resultCustom = await ex.run(async () => {
-			throw 'custom';
-		});
-		expect(resultCustom.ok).toBe(false);
+			throw 'custom'
+		})
+		expect(resultCustom.ok).toBe(false)
 		if (!resultCustom.ok) {
-			expect(resultCustom.error.code).toBe('CUSTOM_ERROR');
+			expect(resultCustom.error.code).toBe('CUSTOM_ERROR')
 		}
 
 		// 2. Check default rule behavior (should fail to match TIMEOUT and go to UNKNOWN)
@@ -73,14 +73,14 @@ describe('rulesMode default behavior', () => {
 		// However, the default rules check for error.name === 'TimeoutError' usually.
 
 		const resultTimeout = await ex.run(async () => {
-			const e = new Error('timeout');
-			e.name = 'TimeoutError';
-			throw e;
-		});
+			const e = new Error('timeout')
+			e.name = 'TimeoutError'
+			throw e
+		})
 
-		expect(resultTimeout.ok).toBe(false);
+		expect(resultTimeout.ok).toBe(false)
 		if (!resultTimeout.ok) {
-			expect(resultTimeout.error.code).toBe('UNKNOWN');
+			expect(resultTimeout.error.code).toBe('UNKNOWN')
 		}
-	});
-});
+	})
+})
