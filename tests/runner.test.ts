@@ -12,6 +12,13 @@ describe('run: success', () => {
 		expect(r.ok).toBe(true);
 		if (r.ok) expect(r.data).toBe(42);
 	});
+
+	it('supports sync task functions', async () => {
+		const ex = make();
+		const r = await ex.run(() => 7);
+		expect(r.ok).toBe(true);
+		if (r.ok) expect(r.data).toBe(7);
+	});
 });
 
 describe('run: abort', () => {
@@ -43,6 +50,31 @@ describe('run: timeout', () => {
 		);
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.code).toBe('TIMEOUT');
+	});
+
+	it('aborts the in-flight task signal on timeout', async () => {
+		const ex = make();
+		let aborted = false;
+		const r = await ex.run(
+			async ({ signal }) => {
+				await new Promise<void>((resolve) => {
+					signal.addEventListener(
+						'abort',
+						() => {
+							aborted = true;
+							resolve();
+						},
+						{ once: true },
+					);
+				});
+				return 'done';
+			},
+			{ timeout: 5 },
+		);
+
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('TIMEOUT');
+		expect(aborted).toBe(true);
 	});
 });
 

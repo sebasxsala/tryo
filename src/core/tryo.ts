@@ -20,10 +20,11 @@ import {
 	UnknownError,
 	type ValidationError,
 } from '../error/typed-error';
-import { calculateDelay } from '../retry/retry-strategies';
+import { calculateDelay, validateStrategy } from '../retry/retry-strategies';
 import {
 	asConcurrencyLimit,
 	asMilliseconds,
+	asPercentage,
 	asRetryCount,
 	type Milliseconds,
 	type RetryCount,
@@ -37,7 +38,7 @@ import type {
 	TryoMetrics,
 	TryoResult,
 } from '../types/result-types';
-import { sleep } from '../utils/timing';
+import { sleep, withTimeout } from '../utils/timing';
 
 // Modern executor with enhanced capabilities
 export type RulesMode = 'extend' | 'replace';
@@ -50,6 +51,18 @@ export type DefaultError =
 	| CircuitOpenError
 	| ValidationError
 	| UnknownError;
+
+type RunOptions<E extends TypedError> = Omit<
+	Partial<TryoConfig<E>>,
+	'circuitBreaker'
+>;
+
+type AllOptions<E extends TypedError> = Omit<
+	Partial<TryoConfig<E> & { concurrency?: number }>,
+	'circuitBreaker'
+>;
+
+type MaybePromise<T> = T | Promise<T>;
 
 type NonNull<T> = T extends null ? never : T;
 type RuleReturn<R> = R extends (err: unknown) => infer Out
@@ -97,6 +110,61 @@ const buildNormalizer = <E extends TypedError>(
 	return createErrorNormalizer(rules, fallback);
 };
 
+const validateJitter = (jitter?: JitterConfig): void => {
+	if (!jitter) return;
+
+	switch (jitter.type) {
+		case 'none':
+			return;
+		case 'full':
+		case 'equal':
+			asPercentage(jitter.ratio);
+			return;
+		case 'custom':
+			return;
+		default: {
+			const _exhaustive: never = jitter;
+			throw new Error(`Unsupported jitter configuration: ${_exhaustive}`);
+		}
+	}
+};
+
+const normalizeExecutionConfig = <E extends TypedError>(
+	config: TryoConfig<E>,
+): TryoConfig<E> => {
+	let normalized: TryoConfig<E> = config;
+
+	if (normalized.timeout !== undefined) {
+		normalized = {
+			...normalized,
+			timeout: Number(asMilliseconds(normalized.timeout)),
+		};
+	}
+
+	if (normalized.concurrency !== undefined) {
+		normalized = {
+			...normalized,
+			concurrency: Number.isFinite(normalized.concurrency)
+				? Number(asConcurrencyLimit(normalized.concurrency))
+				: normalized.concurrency,
+		};
+	}
+
+	if (normalized.retry) {
+		validateStrategy(normalized.retry.strategy);
+		validateJitter(normalized.retry.jitter);
+		normalized = {
+			...normalized,
+			retry: {
+				...normalized.retry,
+				maxRetries: Number(asRetryCount(normalized.retry.maxRetries)),
+			},
+		};
+	}
+
+	return normalized;
+};
+
 export class TryoEngine<E extends TypedError = TypedError> {
 	private readonly circuitBreaker?: CircuitBreaker<E>;
 	private readonly config: TryoConfig<E>;
@@ -120,7 +188,7 @@ export class TryoEngine<E extends TypedError = TypedError> {
 			},
 		};
 
-		this.config = baseConfig;
+		this.config = normalizeExecutionConfig(baseConfig);
 
 		if (baseConfig.circuitBreaker) {
 			this.circuitBreaker = new CircuitBreaker(baseConfig.circuitBreaker);
@@ -130,10 +198,13 @@ export class TryoEngine<E extends TypedError = TypedError> {
 
 	// Execute a single task
 	async run<T>(
-		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options: Partial<TryoConfig<E>> = {},
+		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
+		options: RunOptions<E> = {},
 	): Promise<TryoResult<T, E>> {
-		const mergedConfig = { ...this.config, ...options };
+		const mergedConfig = normalizeExecutionConfig({
+			...this.config,
+			...options,
+		} as TryoConfig<E>);
 
 		// Circuit breaker check
 		if (this.circuitBreaker) {
@@ -195,17 +266,15 @@ export class TryoEngine<E extends TypedError = TypedError> {
 	}
 
 	async runOrThrow<T>(
-		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options: Partial<TryoConfig<E>> = {},
+		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
+		options: RunOptions<E> = {},
 	): Promise<T> {
-		const r = await this.run(task, options);
-		if (r.ok) return r.data;
-		throw r.error;
+		return this.orThrow(task, options);
 	}
 
 	async orThrow<T>(
-		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options: Partial<TryoConfig<E>> = {},
+		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
+		options: RunOptions<E> = {},
 	): Promise<T> {
 		const r = await this.run(task, options);
 		if (r.ok) return r.data;
@@ -214,14 +283,21 @@ export class TryoEngine<E extends TypedError = TypedError> {
 
 	// Execute multiple tasks with concurrency control
 	async all<T>(
-		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
-		options: Partial<TryoConfig<E> & { concurrency?: number }> = {},
+		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
+		options: AllOptions<E> = {},
 	): Promise<TryoResult<T, E>[]> {
-		const mergedConfig = { ...this.config, ...options };
+		const mergedConfig = normalizeExecutionConfig({
+			...this.config,
+			...options,
+		} as TryoConfig<E>);
 		const rawConcurrency = mergedConfig.concurrency ?? Number.POSITIVE_INFINITY;
 		const concurrency = Number.isFinite(rawConcurrency)
 			? Number(asConcurrencyLimit(rawConcurrency))
 			: Number.POSITIVE_INFINITY;
+
+		if (concurrency === Number.POSITIVE_INFINITY) {
+			return Promise.all(tasks.map((task) => this.run(task, mergedConfig)));
+		}
 
 		const out: TryoResult<T, E>[] = new Array(tasks.length);
 		let idx = 0;
@@ -263,13 +339,10 @@ export class TryoEngine<E extends TypedError = TypedError> {
 	}
 
 	async allOrThrow<T>(
-		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
-		options: Partial<TryoConfig<E> & { concurrency?: number }> = {},
+		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
+		options: AllOptions<E> = {},
 	): Promise<T[]> {
 		const results = await this.all(tasks, options);
-		for (const r of results) {
-			if (!r.ok) throw r.error;
-		}
 		return results.map((r) => {
 			if (!r.ok) throw r.error;
 			return r.data;
@@ -348,20 +421,26 @@ export class TryoEngine<E extends TypedError = TypedError> {
 			mapError,
 		});
 	}
-
-	// Create a new executor with different error type
-	withErrorType<T extends TypedError>(
-		config: Partial<TryoConfig<T>> = {},
-	): TryoEngine<T> {
-		return new TryoEngine<T>(config as TryoConfig<T>);
-	}
 }
 
 export function tryo<const TRules extends readonly ErrorRule<TypedError>[]>(
-	options: Omit<TryoOptions<InferErrorFromRules<TRules>>, 'rules'> & {
+	options: Omit<
+		TryoOptions<InferErrorFromRules<TRules>>,
+		'rules' | 'rulesMode'
+	> & {
 		rules: TRules;
+		rulesMode: 'replace';
 	},
 ): Tryo<InferErrorFromRules<TRules>>;
+export function tryo<const TRules extends readonly ErrorRule<TypedError>[]>(
+	options: Omit<
+		TryoOptions<InferErrorFromRules<TRules> | DefaultError>,
+		'rules'
+	> & {
+		rules: TRules;
+		rulesMode?: 'extend';
+	},
+): Tryo<InferErrorFromRules<TRules> | DefaultError>;
 export function tryo<E extends TypedError = DefaultError>(
 	options?: TryoOptions<E>,
 ): Tryo<E>;
@@ -382,7 +461,7 @@ export function tryo<E extends TypedError = DefaultError>(
 }
 
 async function executeInternal<T, E extends TypedError>(
-	task: (ctx: { signal: AbortSignal }) => Promise<T>,
+	task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
 	config: TryoConfig<E>,
 ): Promise<TryoResult<T, E>> {
 	const {
@@ -395,9 +474,9 @@ async function executeInternal<T, E extends TypedError>(
 		logger,
 	} = config;
 
-	const safeCall = (
-		fn: ((...args: unknown[]) => unknown) | undefined,
-		...args: unknown[]
+	const safeCall = <A extends unknown[]>(
+		fn: ((...args: A) => unknown) | undefined,
+		...args: A
 	) => {
 		try {
 			fn?.(...args);
@@ -420,12 +499,20 @@ async function executeInternal<T, E extends TypedError>(
 	const { signal: compositeSignal, cleanup: cleanupCompositeSignal } =
 		createCompositeSignal(outerSignal);
 
+	const buildMetrics = (lastErrorOverride?: E): TryoMetrics<E> => ({
+		totalAttempts,
+		totalRetries:
+			totalAttempts > (0 as RetryCount)
+				? ((Number(totalAttempts) - 1) as RetryCount)
+				: (0 as RetryCount),
+		totalDuration: (Date.now() - startTime) as Milliseconds,
+		lastError: lastErrorOverride,
+		retryHistory,
+	});
+
 	try {
 		if (compositeSignal.aborted) {
-			safeCall(
-				hooks?.onAbort as unknown as (...a: unknown[]) => unknown,
-				compositeSignal,
-			);
+			safeCall(hooks?.onAbort, compositeSignal);
 			// normalize abort immediately
 			const e = errorHandling.normalizer(
 				new DOMException('Aborted', 'AbortError'),
@@ -446,108 +533,98 @@ async function executeInternal<T, E extends TypedError>(
 			};
 		}
 
-		const runAttempt = async (attempt: number): Promise<T> => {
-			totalAttempts = attempt as RetryCount;
-			try {
-				const p = task({ signal: compositeSignal });
-				const data = timeout
-					? await withTimeout(p, timeout, compositeSignal)
-					: await p;
-				safeCall(
-					hooks?.onSuccess as unknown as (...a: unknown[]) => unknown,
-					data,
-				);
-				safeCall(
-					logger?.info as unknown as (...a: unknown[]) => unknown,
-					`Task succeeded on attempt ${attempt}`,
-				);
-				return data;
-			} catch (err) {
-				const norm = errorHandling.normalizer(err);
-				const mapped = errorHandling.mapError
-					? errorHandling.mapError(norm)
-					: norm;
-				lastError = mapped;
-				if (mapped.code === 'ABORTED') {
-					safeCall(
-						hooks?.onAbort as unknown as (...a: unknown[]) => unknown,
-						compositeSignal,
-					);
-				}
+		const runAttempt = async (): Promise<T> => {
+			let attempt = 1;
+			const maxRetries = asRetryCount(retry?.maxRetries ?? 0);
 
-				if (!(ignoreAbort && mapped.code === 'ABORTED')) {
-					safeCall(
-						hooks?.onError as unknown as (...a: unknown[]) => unknown,
-						mapped,
-					);
-					safeCall(
-						logger?.error as unknown as (...a: unknown[]) => unknown,
-						`Task failed on attempt ${attempt}`,
-						mapped,
-					);
-				}
+			while (true) {
+				totalAttempts = attempt as RetryCount;
+				const attemptController = new AbortController();
+				const { signal: attemptSignal, cleanup: cleanupAttemptSignal } =
+					createCompositeSignal(compositeSignal, attemptController.signal);
 
-				const maxRetries = asRetryCount(retry?.maxRetries ?? 0);
-				if (attempt <= Number(maxRetries)) {
-					const shouldRetry = retry?.shouldRetry;
-					const ctx = {
-						totalAttempts: Number(totalAttempts) as unknown as number,
-						elapsedTime: (Date.now() - startTime) as number,
-						startTime: new Date(startTime),
-						lastDelay: retryHistory[retryHistory.length - 1]?.delay
-							? Number(retryHistory[retryHistory.length - 1]?.delay)
-							: undefined,
-					};
-
-					if (!shouldRetry || shouldRetry(attempt, mapped, ctx)) {
-						const baseDelayMs = retry
-							? calculateDelay(retry.strategy, attempt as RetryCount, mapped)
-							: 0;
-						const delayMs = applyJitter(baseDelayMs, retry?.jitter);
-						const delay = asMilliseconds(delayMs);
-
-						retryHistory.push({
-							attempt: attempt as RetryCount,
-							error: mapped,
-							delay,
-							timestamp: new Date(),
-						});
-						safeCall(
-							hooks?.onRetry as unknown as (...a: unknown[]) => unknown,
-							attempt,
-							mapped,
-							delayMs,
-						);
-						safeCall(
-							logger?.info as unknown as (...a: unknown[]) => unknown,
-							`Retrying in ${delayMs}ms (attempt ${attempt + 1})`,
-						);
-
-						await sleep(delay as number, compositeSignal);
-						return runAttempt(attempt + 1);
+				try {
+					const p = Promise.resolve(task({ signal: attemptSignal }));
+					const data = timeout
+						? await withTimeout(p, timeout, attemptSignal, () => {
+								attemptController.abort();
+								return new TimeoutError(asMilliseconds(timeout));
+							})
+						: await p;
+					safeCall(hooks?.onSuccess, data, buildMetrics());
+					safeCall(logger?.info, `Task succeeded on attempt ${attempt}`);
+					return data;
+				} catch (err) {
+					const norm = errorHandling.normalizer(err);
+					const mapped = errorHandling.mapError
+						? errorHandling.mapError(norm)
+						: norm;
+					lastError = mapped;
+					if (mapped.code === 'ABORTED') {
+						safeCall(hooks?.onAbort, attemptSignal);
 					}
-				}
 
-				throw mapped;
+					if (!(ignoreAbort && mapped.code === 'ABORTED')) {
+						safeCall(hooks?.onError, mapped, buildMetrics(mapped));
+						safeCall(
+							logger?.error,
+							`Task failed on attempt ${attempt}`,
+							mapped,
+						);
+					}
+
+					if (mapped.code === 'ABORTED') {
+						throw mapped;
+					}
+
+					if (attempt <= Number(maxRetries)) {
+						const shouldRetry = retry?.shouldRetry;
+						const ctx = {
+							totalAttempts: Number(totalAttempts) as unknown as number,
+							elapsedTime: (Date.now() - startTime) as number,
+							startTime: new Date(startTime),
+							lastDelay: retryHistory[retryHistory.length - 1]?.delay
+								? Number(retryHistory[retryHistory.length - 1]?.delay)
+								: undefined,
+						};
+
+						if (!shouldRetry || shouldRetry(attempt, mapped, ctx)) {
+							const baseDelayMs = retry
+								? calculateDelay(retry.strategy, attempt as RetryCount, mapped)
+								: 0;
+							const delayMs = applyJitter(baseDelayMs, retry?.jitter);
+							const delay = asMilliseconds(delayMs);
+
+							retryHistory.push({
+								attempt: attempt as RetryCount,
+								error: mapped,
+								delay,
+								timestamp: new Date(),
+							});
+							safeCall(hooks?.onRetry, attempt, mapped, delayMs);
+							safeCall(
+								logger?.info,
+								`Retrying in ${delayMs}ms (attempt ${attempt + 1})`,
+							);
+
+							attempt += 1;
+							await sleep(delay as number, compositeSignal);
+							continue;
+						}
+					}
+
+					throw mapped;
+				} finally {
+					cleanupAttemptSignal();
+				}
 			}
 		};
 
 		try {
-			const data = await runAttempt(1);
-			totalRetries =
-				totalAttempts > (0 as RetryCount)
-					? ((Number(totalAttempts) - 1) as RetryCount)
-					: (0 as RetryCount);
-			const metrics: TryoMetrics<E> = {
-				totalAttempts,
-				totalRetries,
-				totalDuration: (Date.now() - startTime) as Milliseconds,
-				retryHistory,
-			};
-			safeCall(
-				hooks?.onFinally as unknown as (...a: unknown[]) => unknown,
-				metrics,
-			);
+			const data = await runAttempt();
+			const metrics: TryoMetrics<E> = buildMetrics();
+			totalRetries = metrics.totalRetries;
+			safeCall(hooks?.onFinally, metrics);
 			return { type: 'success', ok: true, data, error: null, metrics };
 		} catch (err) {
 			const finalError = (lastError ??
@@ -559,23 +636,10 @@ async function executeInternal<T, E extends TypedError>(
 						? 'aborted'
 						: 'failure';
 
-			totalRetries =
-				totalAttempts > (0 as RetryCount)
-					? ((Number(totalAttempts) - 1) as RetryCount)
-					: (0 as RetryCount);
+			const metrics: TryoMetrics<E> = buildMetrics(finalError);
+			totalRetries = metrics.totalRetries;
 
-			const metrics: TryoMetrics<E> = {
-				totalAttempts,
-				totalRetries,
-				totalDuration: (Date.now() - startTime) as Milliseconds,
-				lastError: finalError,
-				retryHistory,
-			};
-
-			safeCall(
-				hooks?.onFinally as unknown as (...a: unknown[]) => unknown,
-				metrics,
-			);
+			safeCall(hooks?.onFinally, metrics);
 			return {
 				type: kind,
 				ok: false,
@@ -589,75 +653,38 @@ async function executeInternal<T, E extends TypedError>(
 	}
 }
 
-function createCompositeSignal(signal?: AbortSignal): {
+function createCompositeSignal(...signals: Array<AbortSignal | undefined>): {
 	signal: AbortSignal;
 	cleanup: () => void;
 } {
 	const controller = new AbortController();
-	if (!signal) {
+	const inputSignals = signals.filter(
+		(signal): signal is AbortSignal => signal !== undefined,
+	);
+	if (inputSignals.length === 0) {
 		return { signal: controller.signal, cleanup: () => {} };
 	}
 
-	const abort = () => controller.abort();
-	if (signal.aborted) {
-		abort();
+	if (inputSignals.some((signal) => signal.aborted)) {
+		controller.abort();
 		return { signal: controller.signal, cleanup: () => {} };
 	}
 
-	signal.addEventListener('abort', abort, { once: true });
+	const listeners: Array<{ signal: AbortSignal; abort: () => void }> = [];
+	for (const signal of inputSignals) {
+		const abort = () => controller.abort();
+		signal.addEventListener('abort', abort, { once: true });
+		listeners.push({ signal, abort });
+	}
+
 	return {
 		signal: controller.signal,
-		cleanup: () => signal.removeEventListener('abort', abort),
+		cleanup: () => {
+			for (const listener of listeners) {
+				listener.signal.removeEventListener('abort', listener.abort);
+			}
+		},
 	};
-}
-
-async function withTimeout<T>(
-	promise: Promise<T>,
-	timeoutMs: number,
-	signal?: AbortSignal,
-): Promise<T> {
-	return new Promise<T>((resolve, reject) => {
-		if (signal?.aborted) {
-			reject(new DOMException('Aborted', 'AbortError'));
-			return;
-		}
-
-		let settled = false;
-		const timeoutId = setTimeout(() => {
-			settled = true;
-			cleanup();
-			reject(new TimeoutError(asMilliseconds(timeoutMs)));
-		}, timeoutMs);
-
-		const onAbort = () => {
-			if (settled) return;
-			settled = true;
-			cleanup();
-			reject(new DOMException('Aborted', 'AbortError'));
-		};
-
-		const cleanup = () => {
-			clearTimeout(timeoutId);
-			signal?.removeEventListener('abort', onAbort);
-		};
-
-		signal?.addEventListener('abort', onAbort, { once: true });
-
-		promise.then(
-			(value) => {
-				if (settled) return;
-				settled = true;
-				cleanup();
-				resolve(value);
-			},
-			(error) => {
-				if (settled) return;
-				settled = true;
-				cleanup();
-				reject(error);
-			},
-		);
-	});
 }
 
 function applyJitter(delayMs: number, jitter?: JitterConfig): number {
@@ -689,26 +716,26 @@ function applyJitter(delayMs: number, jitter?: JitterConfig): number {
 
 export type Tryo<E extends TypedError = TypedError> = {
 	run: <T>(
-		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options?: Partial<TryoConfig<E>>,
+		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
+		options?: RunOptions<E>,
 	) => Promise<TryoResult<T, E>>;
 
 	runOrThrow: <T>(
-		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options?: Partial<TryoConfig<E>>,
+		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
+		options?: RunOptions<E>,
 	) => Promise<T>;
 
 	orThrow: <T>(
-		task: (ctx: { signal: AbortSignal }) => Promise<T>,
-		options?: Partial<TryoConfig<E>>,
+		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
+		options?: RunOptions<E>,
 	) => Promise<T>;
 	all: <T>(
-		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
-		options?: Partial<TryoConfig<E> & { concurrency?: number }>,
+		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
+		options?: AllOptions<E>,
 	) => Promise<Array<TryoResult<T, E>>>;
 	allOrThrow: <T>(
-		tasks: Array<(ctx: { signal: AbortSignal }) => Promise<T>>,
-		options?: Partial<TryoConfig<E> & { concurrency?: number }>,
+		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
+		options?: AllOptions<E>,
 	) => Promise<T[]>;
 	partitionAll: <T>(results: Array<TryoResult<T, E>>) => {
 		ok: Array<SuccessResult<T, E>>;

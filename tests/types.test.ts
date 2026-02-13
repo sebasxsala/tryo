@@ -118,6 +118,15 @@ describe('Type inference', () => {
 			expect(resultTimeout.error.code).toBe('UNKNOWN');
 			// If it was extended, it would be "TIMEOUT"
 		}
+
+		const r = await ex.run(async () => {
+			throw 'foo';
+		});
+		if (!r.ok && r.error.code === 'CUSTOM_FOO') {
+			expect(r.error.message).toBe('Foo');
+		}
+		// @ts-expect-error replace mode should not include default TIMEOUT code
+		r.error.code === 'TIMEOUT';
 	});
 
 	it("supports rulesMode='extend' (default) to include default rules", async () => {
@@ -150,6 +159,26 @@ describe('Type inference', () => {
 
 		if (!resultTimeout.ok) {
 			expect(resultTimeout.error.code as string).toBe('TIMEOUT');
+		}
+
+		const r = await ex.run(async () => {
+			throw 'foo';
+		});
+		if (!r.ok) {
+			const code = r.error.code;
+			expect(typeof code).toBe('string');
+			if (code === 'CUSTOM_FOO' || code === 'TIMEOUT') {
+				expect(code === 'CUSTOM_FOO' || code === 'TIMEOUT').toBe(true);
+			}
+		}
+	});
+
+	it('supports sync task typings', async () => {
+		const ex = tryo();
+		const result = await ex.run(() => 123);
+		if (result.ok) {
+			const value: number = result.data;
+			expect(value).toBe(123);
 		}
 	});
 

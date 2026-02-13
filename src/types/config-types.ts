@@ -3,7 +3,10 @@
  * Provides comprehensive configuration with type safety
  */
 
-import type { CircuitBreakerConfig } from '../circuit-breaker/breaker-config';
+import type {
+	CircuitBreakerConfig,
+	CircuitState,
+} from '../circuit-breaker/breaker';
 import type { ErrorNormalizer } from '../error/error-normalizer';
 import type { TypedError } from '../error/typed-error';
 import type { RetryStrategy } from '../retry/retry-strategies';
@@ -129,9 +132,6 @@ export interface HookConfig<E extends TypedError> {
 		to: CircuitState,
 	) => void;
 }
-
-// Circuit breaker state enum
-export type CircuitState = 'closed' | 'open' | 'half-open';
 
 // Execution metrics (re-export from result-types for convenience)
 export type TryoMetrics<E extends TypedError> =

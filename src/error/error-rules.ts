@@ -5,7 +5,6 @@
 
 import { BuiltinRules, createErrorRule } from './error-builder';
 import type { ErrorRule } from './error-normalizer';
-import { CircuitOpenError, ValidationError } from './typed-error';
 
 // Built-in error rules export
 export { BuiltinRules };
@@ -34,33 +33,3 @@ export const errorRule = {
 
 // Default error rule set
 export const defaultRules = builtInRules;
-
-// Timeout error rule
-export const timeoutErrorRule: ErrorRule = BuiltinRules.timeout;
-
-// Aborted error rule
-export const abortedErrorRule: ErrorRule = BuiltinRules.abort;
-
-// Network error rule
-export const networkErrorRule: ErrorRule = BuiltinRules.network;
-
-// HTTP error rule
-export const httpErrorRule: ErrorRule = BuiltinRules.http;
-
-// Circuit breaker error rule
-export const circuitOpenErrorRule: ErrorRule = createErrorRule
-	.when((err): err is CircuitOpenError => err instanceof CircuitOpenError)
-	.toCode('CIRCUIT_OPEN')
-	.with((err) => ({
-		message: err.message,
-		cause: err,
-	}));
-
-// Validation error rule
-export const validationErrorRule: ErrorRule = createErrorRule
-	.when((err): err is ValidationError => err instanceof ValidationError)
-	.toCode('VALIDATION')
-	.with((err) => ({
-		message: err.message,
-		cause: err,
-	}));

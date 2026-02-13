@@ -80,14 +80,18 @@ export const calculateDelay = (
 		case 'exponential': {
 			const expDelay = strategy.base * strategy.factor ** (Number(attempt) - 1);
 			return (
-				strategy.maxDelay ? Math.min(expDelay, strategy.maxDelay) : expDelay
+				strategy.maxDelay !== undefined
+					? Math.min(expDelay, strategy.maxDelay)
+					: expDelay
 			) as number;
 		}
 
 		case 'fibonacci': {
 			const fibDelay = strategy.base * fibonacci(Number(attempt));
 			return (
-				strategy.maxDelay ? Math.min(fibDelay, strategy.maxDelay) : fibDelay
+				strategy.maxDelay !== undefined
+					? Math.min(fibDelay, strategy.maxDelay)
+					: fibDelay
 			) as number;
 		}
 
@@ -119,8 +123,8 @@ const fibonacci = (n: number): number => {
 export const validateStrategy = (strategy: RetryStrategy): void => {
 	switch (strategy.type) {
 		case 'fixed': {
-			if (strategy.delay <= 0) {
-				throw new Error('Fixed delay must be positive');
+			if (strategy.delay < 0) {
+				throw new Error('Fixed delay must be non-negative');
 			}
 			break;
 		}
@@ -132,7 +136,7 @@ export const validateStrategy = (strategy: RetryStrategy): void => {
 			if (strategy.factor <= 1) {
 				throw new Error('Exponential factor must be greater than 1');
 			}
-			if (strategy.maxDelay && strategy.maxDelay <= 0) {
+			if (strategy.maxDelay !== undefined && strategy.maxDelay <= 0) {
 				throw new Error('Exponential max delay must be positive');
 			}
 			break;
@@ -141,7 +145,7 @@ export const validateStrategy = (strategy: RetryStrategy): void => {
 			if (strategy.base <= 0) {
 				throw new Error('Fibonacci base delay must be positive');
 			}
-			if (strategy.maxDelay && strategy.maxDelay <= 0) {
+			if (strategy.maxDelay !== undefined && strategy.maxDelay <= 0) {
 				throw new Error('Fibonacci max delay must be positive');
 			}
 			break;

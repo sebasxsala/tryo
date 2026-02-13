@@ -49,4 +49,23 @@ describe('Retry behavior and metrics', () => {
 			expect(r.metrics?.retryHistory).toHaveLength(1);
 		}
 	});
+
+	it('honors maxDelay when set to zero', async () => {
+		const ex = tryo({
+			retry: {
+				maxRetries: 1,
+				strategy: RetryStrategies.exponential(100, 2, 0.0001),
+			},
+		});
+
+		const r = await ex.run(async () => {
+			throw new Error('fail');
+		});
+
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.metrics.retryHistory).toHaveLength(1);
+			expect(Number(r.metrics.retryHistory[0]?.delay)).toBeLessThanOrEqual(1);
+		}
+	});
 });

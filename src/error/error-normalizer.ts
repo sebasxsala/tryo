@@ -15,11 +15,6 @@ export type ErrorRule<E extends TypedError = TypedError> = (
 	error: unknown,
 ) => E | null;
 
-// Error normalization result
-export type NormalizationResult<E extends TypedError> =
-	| { success: true; error: E }
-	| { success: false; originalError: unknown };
-
 // Create error normalizer from rules
 export const createErrorNormalizer = <E extends TypedError>(
 	rules: ErrorRule<E>[],

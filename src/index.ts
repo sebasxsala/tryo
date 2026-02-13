@@ -15,22 +15,18 @@ export {
 	type RulesMode,
 	type TryoOptions,
 	tryo,
+	tryo as default,
 } from './core/tryo';
 export { errorRule } from './error/error-rules';
+export { TypedError } from './error/typed-error';
 export { RetryStrategies } from './retry/retry-strategies';
 export type {
-	ConcurrencyLimit,
 	Milliseconds,
-	Percentage,
 	RetryCount,
-	StatusCode,
 } from './types/branded-types';
 export {
-	asConcurrencyLimit,
 	asMilliseconds,
-	asPercentage,
 	asRetryCount,
-	asStatusCode,
 } from './types/branded-types';
 export type { TryoConfig } from './types/config-types';
 export type {

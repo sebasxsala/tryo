@@ -145,73 +145,7 @@ export const createErrorRule = {
 		new ErrorRuleBuilder(
 			(err): err is InstanceType<T> => err instanceof ErrorClass,
 		),
-
-	code: <C extends string>(code: C) => ({
-		for: <T>(predicate: (err: unknown) => err is T) =>
-			new ErrorMapper(predicate, code),
-	}),
-
-	// Built-in error rules for common cases
-	string: <C extends string>(message: string, code: C) => ({
-		when: <T>(predicate: (err: unknown) => err is T) =>
-			createErrorRule
-				.when(predicate)
-				.toCode(code)
-				.with((err) => ({
-					message: err === message ? message : `${code}: ${err}`,
-					cause: err,
-				})),
-	}),
-
-	// HTTP status error rule
-	httpStatus: <C extends string>(status: number, code?: C) => ({
-		for: <T>(predicate: (err: unknown) => err is T) =>
-			createErrorRule
-				.when(predicate)
-				.toCode(code ?? `HTTP_${status}`)
-				.with((err) => ({
-					message: `HTTP ${status} error`,
-					cause: err,
-				})),
-	}),
-
-	// NOTE: advanced helpers removed for simplicity
 } as const;
-
-// Legacy compatibility exports
-export { ErrorRuleBuilder as errorRuleBuilder, ErrorMapper as errorMapper };
-
-// Utility functions for rule composition
-export const combineRules = <E extends TypedError>(
-	...rules: ErrorRule<E>[]
-): ErrorRule<E> => {
-	return (error: unknown): E | null => {
-		for (const rule of rules) {
-			const result = rule(error);
-			if (result !== null) {
-				return result;
-			}
-		}
-		return null;
-	};
-};
-
-export const chainRules = (
-	...rules: Array<ErrorRule<TypedError> | ((err: unknown) => TypedError | null)>
-): ErrorRule<TypedError> => {
-	return (error: unknown): TypedError | null => {
-		const currentError = error;
-
-		for (const rule of rules) {
-			const result = rule(currentError);
-			if (result !== null) {
-				return result;
-			}
-		}
-
-		return null;
-	};
-};
 
 // Built-in error rule presets
 export const BuiltinRules = {
