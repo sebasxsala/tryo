@@ -1,6 +1,6 @@
 {
 	"name": "tryo",
-	"version": "0.13.0",
+	"version": "0.13.1",
 	"description": "Run sync/async functions and return a typed Result instead of throwing.",
 	"type": "module",
 	"sideEffects": false,
