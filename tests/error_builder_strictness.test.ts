@@ -1,5 +1,6 @@
 import { describe, it } from 'bun:test'
 import { createErrorRule } from '../src/error/error-builder'
+import type { ErrorRule } from '../src/error/error-normalizer'
 
 describe('Strict Error Mapping', () => {
 	it('should NOT allow extra properties in toError', () => {
@@ -72,5 +73,16 @@ describe('Strict Error Mapping', () => {
 			title: 'DomainValidationError',
 			meta: { field: e.field },
 		}))
+	})
+
+	it('should NOT ALLOW direct instance without necessary properties', () => {
+		class DomainError extends Error {
+			constructor(readonly field: string) {
+				super(`invalid ${field}`)
+			}
+		}
+
+		// @ts-expect-error - without code, instance() cannot be used directly as ErrorRule
+		const _rule: ErrorRule = createErrorRule.instance(DomainError)
 	})
 })

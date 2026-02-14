@@ -50,6 +50,17 @@ type InstanceRuleHandle<T> = ErrorRule<AnyTypedError> & {
 	toError: ErrorRuleBuilder<T>['toError']
 }
 
+type InferableInstanceShape = Error & {
+	readonly code: string
+	readonly title?: string
+	readonly meta?: Record<string, unknown>
+	readonly status?: number
+	readonly retryable?: boolean
+	readonly raw?: unknown
+	readonly path?: string
+	readonly cause?: unknown
+}
+
 type MappedTypedError<Out extends ErrorResponse, Input> = TypedError<
 	Out['code'],
 	Out['meta'] extends Record<string, unknown>
@@ -159,7 +170,9 @@ export class ErrorRuleBuilder<T> {
 
 function instanceRule<T extends abstract new (...args: never[]) => unknown>(
 	ErrorClass: T,
-): InstanceRuleHandle<InstanceType<T>>
+): InstanceType<T> extends InferableInstanceShape
+	? InstanceRuleHandle<InstanceType<T>>
+	: ErrorRuleBuilder<InstanceType<T>>
 function instanceRule<
 	T extends abstract new (
 		...args: never[]
@@ -169,17 +182,12 @@ function instanceRule<
 	ErrorClass: T,
 	mapper: (err: InstanceType<T>) => Strict<Out, ErrorResponse>,
 ): ErrorRule<MappedTypedError<Out, InstanceType<T>>>
-function instanceRule<
-	T extends abstract new (
-		...args: never[]
-	) => unknown,
-	const Out extends ErrorResponse,
->(
-	ErrorClass: T,
-	mapper?: (err: InstanceType<T>) => Strict<Out, ErrorResponse>,
-) {
+function instanceRule(
+	ErrorClass: abstract new (...args: never[]) => unknown,
+	mapper?: (err: unknown) => Strict<ErrorResponse, ErrorResponse>,
+): unknown {
 	const builder = new ErrorRuleBuilder(
-		(err): err is InstanceType<T> => err instanceof ErrorClass,
+		(err): err is unknown => err instanceof ErrorClass,
 	)
 
 	if (mapper) {
@@ -241,7 +249,7 @@ function instanceRule<
 		return new InferredInstanceError()
 	}
 
-	const handle = inferredRule as InstanceRuleHandle<InstanceType<T>>
+	const handle = inferredRule as InstanceRuleHandle<unknown>
 	handle.toCode = builder.toCode.bind(builder)
 	handle.toError = builder.toError.bind(builder)
 	return handle
