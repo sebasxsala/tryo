@@ -1,41 +1,49 @@
-import { describe, it } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
 import { tryo } from '../src/core/tryo'
 import { errorRule } from '../src/error/error-rules'
 
-type UniqueCodesCheck<
-	T extends readonly string[],
-	Seen = never,
-> = T extends readonly [
-	infer Head extends string,
-	...infer Tail extends string[],
-]
-	? [Head] extends [Seen]
-		? { error: 'Duplicate code detected'; code: Head }
-		: UniqueCodesCheck<Tail, Seen | Head>
-	: true
-
 describe('Unique code check', () => {
-	it('should flag duplicate codes across toError rules', () => {
-		// @ts-expect-error - Duplicate code 'DUPLICATE'
-		const _duplicateCodeCheck: UniqueCodesCheck<['DUPLICATE', 'DUPLICATE']> =
-			true
+	it('throws when duplicate rule codes are configured', () => {
+		expect(() =>
+			tryo({
+				rulesMode: 'replace',
+				rules: [
+					errorRule
+						.when((e): e is 'a' => e === 'a')
+						.toCode('DUPLICATE')
+						.with(() => ({
+							message: 'Error A',
+						})),
+					errorRule
+						.when((e): e is 'b' => e === 'b')
+						.toCode('DUPLICATE')
+						.with(() => ({
+							message: 'Error B',
+						})),
+				] as const,
+			}),
+		).toThrow(/Duplicate rule code detected: DUPLICATE/)
+	})
 
-		tryo({
-			rulesMode: 'replace',
-			rules: [
-				errorRule
-					.when((e): e is 'a' => e === 'a')
-					.toError(() => ({
-						code: 'DUPLICATE' as const,
-						message: 'Error A',
-					})),
-				errorRule
-					.when((e): e is 'b' => e === 'b')
-					.toError(() => ({
-						code: 'DUPLICATE' as const,
-						message: 'Error B',
-					})),
-			] as const,
-		})
+	it('throws when duplicate toError codes are configured', () => {
+		expect(() =>
+			tryo({
+				rulesMode: 'replace',
+				rules: [
+					errorRule
+						.when((e): e is 'a' => e === 'a')
+						.toError(() => ({
+							code: 'DUPLICATE' as const,
+							message: 'Error A',
+						})),
+					errorRule
+						.when((e): e is 'b' => e === 'b')
+						.toError(() => ({
+							code: 'DUPLICATE' as const,
+							message: 'Error B',
+						})),
+				] as const,
+			}),
+		).toThrow(/Duplicate rule code detected: DUPLICATE/)
 	})
 })

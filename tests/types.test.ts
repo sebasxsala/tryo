@@ -203,4 +203,21 @@ describe('Type inference', () => {
 			expect(name).toBe('alice')
 		}
 	})
+
+	it('infers onSuccess data type from run task result', async () => {
+		const ex = tryo()
+
+		await ex.run(async () => ({ id: 123 as const, name: 'alice' as const }), {
+			onSuccess: (data) => {
+				const id: 123 = data.id
+				const name: 'alice' = data.name
+				const takeNumber = (_n: number) => {}
+				expect(id).toBe(123)
+				expect(name).toBe('alice')
+
+				// @ts-expect-error onSuccess data should not be assignable to number
+				takeNumber(data)
+			},
+		})
+	})
 })

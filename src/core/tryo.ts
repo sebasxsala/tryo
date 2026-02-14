@@ -53,15 +53,19 @@ export type DefaultError =
 	| ValidationError
 	| UnknownError
 
-type RunOptions<E extends AnyTypedError> = Omit<
+type RunOptions<E extends AnyTypedError, TData = unknown> = Omit<
 	Partial<TryoConfig<E>>,
-	'circuitBreaker'
->
+	'circuitBreaker' | 'onSuccess'
+> & {
+	onSuccess?: (data: TData, metrics?: TryoMetrics<E>) => void
+}
 
-type AllOptions<E extends AnyTypedError> = Omit<
+type AllOptions<E extends AnyTypedError, TData = unknown> = Omit<
 	Partial<TryoConfig<E> & { concurrency?: number }>,
-	'circuitBreaker'
->
+	'circuitBreaker' | 'onSuccess'
+> & {
+	onSuccess?: (data: TData, metrics?: TryoMetrics<E>) => void
+}
 
 type MaybePromise<T> = T | Promise<T>
 type RuleLike = (error: unknown) => AnyTypedError | null
@@ -94,6 +98,7 @@ const buildNormalizer = <E extends AnyTypedError>(
 
 	const rulesMode: RulesMode = opts.rulesMode ?? 'extend'
 	const userRules = (opts.rules ?? []) as Array<ErrorRule<E>>
+	assertNoDuplicateRuleCodes(userRules)
 	const builtins = defaultRules as unknown as Array<ErrorRule<E>>
 
 	const fallback =
@@ -109,6 +114,20 @@ const buildNormalizer = <E extends AnyTypedError>(
 	const rules =
 		rulesMode === 'replace' ? userRules : [...userRules, ...builtins]
 	return createErrorNormalizer(rules, fallback)
+}
+
+const assertNoDuplicateRuleCodes = <E extends AnyTypedError>(
+	rules: Array<ErrorRule<E>>,
+): void => {
+	const seen = new Set<string>()
+	for (const rule of rules) {
+		const code = (rule as ErrorRule<E> & { __tryoCode?: string }).__tryoCode
+		if (!code) continue
+		if (seen.has(code)) {
+			throw new Error(`Duplicate rule code detected: ${code}`)
+		}
+		seen.add(code)
+	}
 }
 
 const validateJitter = (jitter?: JitterConfig): void => {
@@ -200,7 +219,7 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 	// Execute a single task
 	async run<T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
-		options: RunOptions<E> = {},
+		options: RunOptions<E, T> = {},
 	): Promise<TryoResult<T, E>> {
 		const mergedConfig = normalizeExecutionConfig({
 			...this.config,
@@ -268,14 +287,14 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 
 	async runOrThrow<T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
-		options: RunOptions<E> = {},
+		options: RunOptions<E, T> = {},
 	): Promise<T> {
 		return this.orThrow(task, options)
 	}
 
 	async orThrow<T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
-		options: RunOptions<E> = {},
+		options: RunOptions<E, T> = {},
 	): Promise<T> {
 		const r = await this.run(task, options)
 		if (r.ok) return r.data
@@ -285,7 +304,7 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 	// Execute multiple tasks with concurrency control
 	async all<T>(
 		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
-		options: AllOptions<E> = {},
+		options: AllOptions<E, T> = {},
 	): Promise<TryoResult<T, E>[]> {
 		const mergedConfig = normalizeExecutionConfig({
 			...this.config,
@@ -341,7 +360,7 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 
 	async allOrThrow<T>(
 		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
-		options: AllOptions<E> = {},
+		options: AllOptions<E, T> = {},
 	): Promise<T[]> {
 		const results = await this.all(tasks, options)
 		return results.map((r) => {
@@ -750,25 +769,25 @@ function applyJitter(delayMs: number, jitter?: JitterConfig): number {
 export type Tryo<E extends AnyTypedError = AnyTypedError> = {
 	run: <T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
-		options?: RunOptions<E>,
+		options?: RunOptions<E, T>,
 	) => Promise<TryoResult<T, E>>
 
 	runOrThrow: <T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
-		options?: RunOptions<E>,
+		options?: RunOptions<E, T>,
 	) => Promise<T>
 
 	orThrow: <T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
-		options?: RunOptions<E>,
+		options?: RunOptions<E, T>,
 	) => Promise<T>
 	all: <T>(
 		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
-		options?: AllOptions<E>,
+		options?: AllOptions<E, T>,
 	) => Promise<Array<TryoResult<T, E>>>
 	allOrThrow: <T>(
 		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
-		options?: AllOptions<E>,
+		options?: AllOptions<E, T>,
 	) => Promise<T[]>
 	partitionAll: <T>(results: Array<TryoResult<T, E>>) => {
 		ok: Array<SuccessResult<T, E>>

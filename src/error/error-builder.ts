@@ -69,6 +69,12 @@ type MappedTypedError<Out extends ErrorResponse, Input> = TypedError<
 	Out['raw'] extends undefined ? Input : Out['raw']
 >
 
+const extractStaticCodeFromMapper = (mapper: (...args: never[]) => unknown) => {
+	const source = mapper.toString()
+	const match = source.match(/\bcode\s*:\s*['"`]([^'"`]+)['"`]/)
+	return match?.[1]
+}
+
 const hasNumericStatus = (err: unknown): err is StatusCarrier => {
 	if (typeof err !== 'object' || err === null) return false
 	const candidate = err as StatusCarrier
@@ -126,7 +132,7 @@ export class ErrorRuleBuilder<T> {
 	toError<const Out extends ErrorResponse>(
 		mapper: (err: T) => Strict<Out, ErrorResponse>,
 	): ErrorRule<MappedTypedError<Out, T>> {
-		return (err: unknown) => {
+		const rule: ErrorRule<MappedTypedError<Out, T>> = (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const out = mapper(err as T)
 			const code = out.code as Out['code']
@@ -165,6 +171,15 @@ export class ErrorRuleBuilder<T> {
 
 			return new CustomError()
 		}
+
+		const staticCode = extractStaticCodeFromMapper(mapper)
+		if (staticCode) {
+			;(
+				rule as ErrorRule<MappedTypedError<Out, T>> & { __tryoCode?: string }
+			).__tryoCode = staticCode
+		}
+
+		return rule
 	}
 }
 
@@ -273,7 +288,15 @@ export class ErrorMapper<T, C extends string> {
 			Out['raw'] extends undefined ? T : Out['raw']
 		>
 	> {
-		return (err: unknown) => {
+		const rule: ErrorRule<
+			TypedError<
+				C,
+				Out['meta'] extends Record<string, unknown>
+					? Out['meta']
+					: Record<string, unknown>,
+				Out['raw'] extends undefined ? T : Out['raw']
+			>
+		> = (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const mapped = mapper(err as T) as Out
 			const cause = Object.hasOwn(mapped, 'cause') ? mapped.cause : err
@@ -310,6 +333,11 @@ export class ErrorMapper<T, C extends string> {
 
 			return new CustomTypedError()
 		}
+
+		;(rule as ErrorRule<TypedError<C>> & { __tryoCode?: C }).__tryoCode =
+			this.errorCode
+
+		return rule
 	}
 }
 
