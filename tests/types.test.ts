@@ -48,6 +48,40 @@ describe('Type inference', () => {
 		}
 	})
 
+	it('requires narrowing before accessing custom meta fields', async () => {
+		const ex = tryo({
+			rules: [
+				errorRule
+					.when((e): e is 'foo' => e === 'foo')
+					.toError((e) => ({
+						code: 'CUSTOM_FOO' as const,
+						message: 'Foo error',
+						meta: { fooId: 123 },
+						raw: e,
+					})),
+			],
+		})
+
+		const unknownResult = await ex.run(async () => {
+			throw new Error('boom')
+		})
+
+		if (!unknownResult.ok) {
+			const takesNumber = (_value: number) => {}
+			// @ts-expect-error custom meta is not narrowed yet
+			takesNumber(unknownResult.error.meta.fooId)
+		}
+
+		const fooResult = await ex.run(async () => {
+			throw 'foo'
+		})
+
+		if (!fooResult.ok && fooResult.error.code === 'CUSTOM_FOO') {
+			const val: number = fooResult.error.meta.fooId
+			expect(val).toBe(123)
+		}
+	})
+
 	it('preserves standard error codes', async () => {
 		const ex = tryo()
 		const result = await ex.run(async () => {
