@@ -1,6 +1,6 @@
 import { describe, it } from 'bun:test'
+import tryo from '../src'
 import { createErrorRule } from '../src/error/error-builder'
-import type { ErrorRule } from '../src/error/error-normalizer'
 
 describe('Strict Error Mapping', () => {
 	it('should NOT allow extra properties in toError', () => {
@@ -82,7 +82,11 @@ describe('Strict Error Mapping', () => {
 			}
 		}
 
-		// @ts-expect-error - without code, instance() cannot be used directly as ErrorRule
-		const _rule: ErrorRule = createErrorRule.instance(DomainError)
+		tryo({
+			rules: [
+				// @ts-expect-error - rules expects callable rules, instance() returns builder here
+				createErrorRule.instance(DomainError),
+			],
+		})
 	})
 })

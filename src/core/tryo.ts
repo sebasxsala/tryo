@@ -452,27 +452,24 @@ type UniqueRulesConstraint<TRules extends readonly RuleLike[]> =
 		? unknown
 		: { __duplicate_error_codes__: CheckUniqueCodes<TRules> }
 
-type EnsureRuleTuple<TRules extends readonly unknown[]> =
-	TRules extends readonly RuleLike[] ? TRules : never
-
-export function tryo<const TRules extends readonly unknown[]>(
+export function tryo<const TRules extends readonly RuleLike[]>(
 	options: Omit<
-		TryoOptions<InferErrorFromRules<EnsureRuleTuple<TRules>>>,
+		TryoOptions<InferErrorFromRules<TRules>>,
 		'rules' | 'rulesMode'
 	> & {
 		rules: TRules
 		rulesMode: 'replace'
-	} & UniqueRulesConstraint<EnsureRuleTuple<TRules>>,
-): Tryo<InferErrorFromRules<EnsureRuleTuple<TRules>>>
-export function tryo<const TRules extends readonly unknown[]>(
+	} & UniqueRulesConstraint<TRules>,
+): Tryo<InferErrorFromRules<TRules>>
+export function tryo<const TRules extends readonly RuleLike[]>(
 	options: Omit<
-		TryoOptions<InferErrorFromRules<EnsureRuleTuple<TRules>> | DefaultError>,
+		TryoOptions<InferErrorFromRules<TRules> | DefaultError>,
 		'rules'
 	> & {
 		rules: TRules
 		rulesMode?: 'extend'
-	} & UniqueRulesConstraint<EnsureRuleTuple<TRules>>,
-): Tryo<InferErrorFromRules<EnsureRuleTuple<TRules>> | DefaultError>
+	} & UniqueRulesConstraint<TRules>,
+): Tryo<InferErrorFromRules<TRules> | DefaultError>
 export function tryo<E extends AnyTypedError = DefaultError>(
 	options?: TryoOptions<E>,
 ): Tryo<E>
