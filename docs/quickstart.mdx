@@ -66,10 +66,8 @@ const runner = tryo({
     strategy: RetryStrategies.fixed(1000),
   },
   timeout: 10000,
-  hooks: {
-    onError: (error) => {
-      console.error("Global error handler:", error);
-    },
+  onError: (error) => {
+    console.error("Global error handler:", error);
   },
 });
 

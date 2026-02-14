@@ -169,11 +169,9 @@ Add hooks for logging or monitoring:
 
 ```typescript
 const ex = tryo({
-  hooks: {
-    onRetry: (attempt, error, delay) => console.log(`Retry ${attempt}...`),
-    onCircuitStateChange: (from, to) =>
-      console.log(`Breaker moved: ${from} -> ${to}`),
-  },
+  onRetry: (attempt, error, delay) => console.log(`Retry ${attempt}...`),
+  onCircuitStateChange: (from, to) =>
+    console.log(`Breaker moved: ${from} -> ${to}`),
 })
 ```
 

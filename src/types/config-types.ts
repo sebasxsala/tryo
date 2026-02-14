@@ -37,8 +37,23 @@ export interface TryoConfig<E extends AnyTypedError = AnyTypedError> {
 	/** Logging configuration */
 	readonly logger?: LoggerConfig<E>
 
-	/** Callback hooks */
-	readonly hooks?: HookConfig<E>
+	/** Called on successful execution */
+	readonly onSuccess?: <T>(data: T, metrics?: TryoMetrics<E>) => void
+
+	/** Called on failed execution */
+	readonly onError?: (error: E, metrics?: TryoMetrics<E>) => void
+
+	/** Called always, success or failure */
+	readonly onFinally?: (metrics?: TryoMetrics<E>) => void
+
+	/** Called on abort */
+	readonly onAbort?: (signal: AbortSignal) => void
+
+	/** Called before retry attempt */
+	readonly onRetry?: (attempt: number, error: E, delay: number) => void
+
+	/** Called when circuit breaker state changes */
+	readonly onCircuitStateChange?: (from: CircuitState, to: CircuitState) => void
 }
 
 // Retry configuration
@@ -107,27 +122,6 @@ export interface LoggerConfig<E extends AnyTypedError> {
 
 	/** Warning logging function */
 	readonly warn?: (message: string, meta?: unknown) => void
-}
-
-// Hook configuration for lifecycle events
-export interface HookConfig<E extends AnyTypedError> {
-	/** Called on successful execution */
-	readonly onSuccess?: <T>(data: T, metrics?: TryoMetrics<E>) => void
-
-	/** Called on failed execution */
-	readonly onError?: (error: E, metrics?: TryoMetrics<E>) => void
-
-	/** Called always, success or failure */
-	readonly onFinally?: (metrics?: TryoMetrics<E>) => void
-
-	/** Called on abort */
-	readonly onAbort?: (signal: AbortSignal) => void
-
-	/** Called before retry attempt */
-	readonly onRetry?: (attempt: number, error: E, delay: number) => void
-
-	/** Called when circuit breaker state changes */
-	readonly onCircuitStateChange?: (from: CircuitState, to: CircuitState) => void
 }
 
 // Execution metrics (re-export from result-types for convenience)

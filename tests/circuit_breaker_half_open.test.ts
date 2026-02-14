@@ -46,9 +46,7 @@ describe('Circuit breaker: half-open', () => {
 				resetTimeout: 10,
 				halfOpenRequests: 1,
 			},
-			hooks: {
-				onCircuitStateChange: (from, to) => transitions.push({ from, to }),
-			},
+			onCircuitStateChange: (from, to) => transitions.push({ from, to }),
 		})
 
 		await ex.run(async () => {

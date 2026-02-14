@@ -196,10 +196,8 @@ describe('runner: circuit breaker', () => {
 describe('observability safety', () => {
 	it('does not fail when onSuccess throws', async () => {
 		const ex = make({
-			hooks: {
-				onSuccess: () => {
-					throw new Error('hook broke')
-				},
+			onSuccess: () => {
+				throw new Error('hook broke')
 			},
 		})
 
@@ -210,10 +208,8 @@ describe('observability safety', () => {
 
 	it('does not throw or mask the task error when onError throws', async () => {
 		const ex = make({
-			hooks: {
-				onError: () => {
-					throw new Error('hook broke')
-				},
+			onError: () => {
+				throw new Error('hook broke')
 			},
 		})
 
@@ -230,10 +226,8 @@ describe('observability safety', () => {
 
 	it('does not throw when onFinally throws', async () => {
 		const ex = make({
-			hooks: {
-				onFinally: () => {
-					throw new Error('hook broke')
-				},
+			onFinally: () => {
+				throw new Error('hook broke')
 			},
 		})
 

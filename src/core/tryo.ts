@@ -215,7 +215,7 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 			const after = this.circuitBreaker.getState().state
 			if (before !== after) {
 				try {
-					mergedConfig.hooks?.onCircuitStateChange?.(before, after)
+					mergedConfig.onCircuitStateChange?.(before, after)
 				} catch {
 					// Hooks must never affect control flow.
 				}
@@ -255,7 +255,7 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 			const after = this.circuitBreaker.getState().state
 			if (before !== after) {
 				try {
-					mergedConfig.hooks?.onCircuitStateChange?.(before, after)
+					mergedConfig.onCircuitStateChange?.(before, after)
 				} catch {
 					// Hooks must never affect control flow.
 				}
@@ -499,8 +499,12 @@ async function executeInternal<T, E extends AnyTypedError>(
 		timeout,
 		retry,
 		errorHandling,
-		hooks,
 		logger,
+		onSuccess,
+		onError,
+		onFinally,
+		onAbort,
+		onRetry,
 	} = config
 
 	const safeCall = <A extends unknown[]>(
@@ -541,7 +545,7 @@ async function executeInternal<T, E extends AnyTypedError>(
 
 	try {
 		if (compositeSignal.aborted) {
-			safeCall(hooks?.onAbort, compositeSignal)
+			safeCall(onAbort, compositeSignal)
 			// normalize abort immediately
 			const e = errorHandling.normalizer(
 				new DOMException('Aborted', 'AbortError'),
@@ -580,7 +584,7 @@ async function executeInternal<T, E extends AnyTypedError>(
 								return new TimeoutError(asMilliseconds(timeout))
 							})
 						: await p
-					safeCall(hooks?.onSuccess, data, buildMetrics())
+					safeCall(onSuccess, data, buildMetrics())
 					safeCall(logger?.info, `Task succeeded on attempt ${attempt}`)
 					return data
 				} catch (err) {
@@ -590,11 +594,11 @@ async function executeInternal<T, E extends AnyTypedError>(
 						: norm
 					lastError = mapped
 					if (mapped.code === 'ABORTED') {
-						safeCall(hooks?.onAbort, attemptSignal)
+						safeCall(onAbort, attemptSignal)
 					}
 
 					if (!(ignoreAbort && mapped.code === 'ABORTED')) {
-						safeCall(hooks?.onError, mapped, buildMetrics(mapped))
+						safeCall(onError, mapped, buildMetrics(mapped))
 						safeCall(logger?.error, `Task failed on attempt ${attempt}`, mapped)
 					}
 
@@ -630,7 +634,7 @@ async function executeInternal<T, E extends AnyTypedError>(
 								delay,
 								timestamp: new Date(),
 							})
-							safeCall(hooks?.onRetry, attempt, mapped, delayMs)
+							safeCall(onRetry, attempt, mapped, delayMs)
 							safeCall(
 								logger?.info,
 								`Retrying in ${delayMs}ms (attempt ${attempt + 1})`,
@@ -653,7 +657,7 @@ async function executeInternal<T, E extends AnyTypedError>(
 			const data = await runAttempt()
 			const metrics: TryoMetrics<E> = buildMetrics()
 			totalRetries = metrics.totalRetries
-			safeCall(hooks?.onFinally, metrics)
+			safeCall(onFinally, metrics)
 			return { type: 'success', ok: true, data, error: null, metrics }
 		} catch (err) {
 			const finalError = (lastError ??
@@ -668,7 +672,7 @@ async function executeInternal<T, E extends AnyTypedError>(
 			const metrics: TryoMetrics<E> = buildMetrics(finalError)
 			totalRetries = metrics.totalRetries
 
-			safeCall(hooks?.onFinally, metrics)
+			safeCall(onFinally, metrics)
 			return {
 				type: kind,
 				ok: false,
