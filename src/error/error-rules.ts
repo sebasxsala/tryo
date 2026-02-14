@@ -26,9 +26,7 @@ export { createErrorRule }
 export const errorRule = {
 	when: <T>(predicate: (err: unknown) => err is T) =>
 		createErrorRule.when(predicate),
-
-	instance: <T extends new (...args: unknown[]) => unknown>(ErrorClass: T) =>
-		createErrorRule.instance(ErrorClass),
+	instance: createErrorRule.instance,
 } as const
 
 // Default error rule set

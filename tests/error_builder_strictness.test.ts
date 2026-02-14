@@ -50,11 +50,27 @@ describe('Strict Error Mapping', () => {
 			.toError((e) => ({
 				code: 'TEST_CODE',
 				message: e,
+				title: 'CustomTitle',
 				status: 500,
 				cause: new Error('original'),
 				retryable: true,
 				raw: { some: 'raw' },
 				path: '/api/test',
 			}))
+	})
+
+	it('should ALLOW direct mapper in instance without toError', () => {
+		class DomainError extends Error {
+			constructor(readonly field: string) {
+				super(`invalid ${field}`)
+			}
+		}
+
+		createErrorRule.instance(DomainError, (e) => ({
+			code: 'DOMAIN_INVALID',
+			message: e.message,
+			title: 'DomainValidationError',
+			meta: { field: e.field },
+		}))
 	})
 })

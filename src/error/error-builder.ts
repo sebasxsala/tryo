@@ -22,6 +22,7 @@ type CodeCarrier = {
 export interface ErrorResponse {
 	code: string
 	message: string
+	title?: string
 	meta?: Record<string, unknown>
 	status?: number
 	cause?: unknown
@@ -33,6 +34,7 @@ export interface ErrorResponse {
 /** Standard mapper properties allowed in .with() */
 export interface MapperResponse {
 	message: string
+	title?: string
 	cause?: unknown
 	meta?: Record<string, unknown>
 	status?: number
@@ -42,6 +44,19 @@ export interface MapperResponse {
 }
 
 type Strict<T, Shape> = T & Record<Exclude<keyof T, keyof Shape>, never>
+
+type InstanceRuleHandle<T> = ErrorRule<AnyTypedError> & {
+	toCode: ErrorRuleBuilder<T>['toCode']
+	toError: ErrorRuleBuilder<T>['toError']
+}
+
+type MappedTypedError<Out extends ErrorResponse, Input> = TypedError<
+	Out['code'],
+	Out['meta'] extends Record<string, unknown>
+		? Out['meta']
+		: Record<string, unknown>,
+	Out['raw'] extends undefined ? Input : Out['raw']
+>
 
 const hasNumericStatus = (err: unknown): err is StatusCarrier => {
 	if (typeof err !== 'object' || err === null) return false
@@ -84,6 +99,9 @@ const isNetworkish = (err: unknown): err is Error | CodeCarrier => {
 	return false
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null
+
 // Modern error rule builder with enhanced ergonomics
 export class ErrorRuleBuilder<T> {
 	constructor(private readonly predicate: (err: unknown) => err is T) {}
@@ -96,19 +114,12 @@ export class ErrorRuleBuilder<T> {
 	// The returned rule is usable in createErrorNormalizer/tryo({ rules }).
 	toError<const Out extends ErrorResponse>(
 		mapper: (err: T) => Strict<Out, ErrorResponse>,
-	): ErrorRule<
-		TypedError<
-			Out['code'],
-			Out['meta'] extends Record<string, unknown>
-				? Out['meta']
-				: Record<string, unknown>,
-			Out['raw'] extends undefined ? T : Out['raw']
-		>
-	> {
+	): ErrorRule<MappedTypedError<Out, T>> {
 		return (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const out = mapper(err as T)
 			const code = out.code as Out['code']
+			const cause = Object.hasOwn(out, 'cause') ? out.cause : err
 			const meta = (out.meta ?? {}) as Out['meta'] extends Record<
 				string,
 				unknown
@@ -130,7 +141,8 @@ export class ErrorRuleBuilder<T> {
 					) as Out['raw'] extends undefined ? T : Out['raw']
 
 					super(out.message, {
-						cause: out.cause ?? err,
+						title: out.title,
+						cause,
 						meta,
 						status: out.status,
 						retryable: out.retryable,
@@ -143,6 +155,96 @@ export class ErrorRuleBuilder<T> {
 			return new CustomError()
 		}
 	}
+}
+
+function instanceRule<T extends abstract new (...args: never[]) => unknown>(
+	ErrorClass: T,
+): InstanceRuleHandle<InstanceType<T>>
+function instanceRule<
+	T extends abstract new (
+		...args: never[]
+	) => unknown,
+	const Out extends ErrorResponse,
+>(
+	ErrorClass: T,
+	mapper: (err: InstanceType<T>) => Strict<Out, ErrorResponse>,
+): ErrorRule<MappedTypedError<Out, InstanceType<T>>>
+function instanceRule<
+	T extends abstract new (
+		...args: never[]
+	) => unknown,
+	const Out extends ErrorResponse,
+>(
+	ErrorClass: T,
+	mapper?: (err: InstanceType<T>) => Strict<Out, ErrorResponse>,
+) {
+	const builder = new ErrorRuleBuilder(
+		(err): err is InstanceType<T> => err instanceof ErrorClass,
+	)
+
+	if (mapper) {
+		return builder.toError(mapper)
+	}
+
+	const inferredRule: ErrorRule<AnyTypedError> = (err: unknown) => {
+		if (!(err instanceof ErrorClass)) {
+			return null
+		}
+
+		if (err instanceof TypedError) {
+			return err as AnyTypedError
+		}
+
+		const candidate = err as Error & {
+			code?: unknown
+			title?: unknown
+			meta?: unknown
+			status?: unknown
+			retryable?: unknown
+			raw?: unknown
+			path?: unknown
+			cause?: unknown
+		}
+
+		const code =
+			typeof candidate.code === 'string' && candidate.code.length > 0
+				? candidate.code
+				: 'UNKNOWN'
+
+		const hasCause = Object.hasOwn(candidate, 'cause')
+		const hasRaw = Object.hasOwn(candidate, 'raw')
+
+		class InferredInstanceError extends TypedError<
+			typeof code,
+			Record<string, unknown>,
+			unknown
+		> {
+			readonly code = code
+			constructor() {
+				super(candidate.message || code, {
+					title:
+						typeof candidate.title === 'string' ? candidate.title : undefined,
+					cause: hasCause ? candidate.cause : err,
+					meta: isRecord(candidate.meta) ? candidate.meta : {},
+					status:
+						typeof candidate.status === 'number' ? candidate.status : undefined,
+					retryable:
+						typeof candidate.retryable === 'boolean'
+							? candidate.retryable
+							: undefined,
+					raw: hasRaw ? candidate.raw : err,
+					path: typeof candidate.path === 'string' ? candidate.path : undefined,
+				})
+			}
+		}
+
+		return new InferredInstanceError()
+	}
+
+	const handle = inferredRule as InstanceRuleHandle<InstanceType<T>>
+	handle.toCode = builder.toCode.bind(builder)
+	handle.toError = builder.toError.bind(builder)
+	return handle
 }
 
 // Error mapper for code-based mapping
@@ -166,6 +268,7 @@ export class ErrorMapper<T, C extends string> {
 		return (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const mapped = mapper(err as T) as Out
+			const cause = Object.hasOwn(mapped, 'cause') ? mapped.cause : err
 			const meta = (mapped.meta ?? {}) as Out['meta'] extends Record<
 				string,
 				unknown
@@ -186,7 +289,8 @@ export class ErrorMapper<T, C extends string> {
 					const raw = Object.hasOwn(mapped, 'raw') ? mapped.raw : err
 					const typedRaw = raw as Out['raw'] extends undefined ? T : Out['raw']
 					super(mapped.message, {
-						cause: mapped.cause,
+						title: mapped.title,
+						cause,
 						meta,
 						status: mapped.status,
 						retryable: mapped.retryable,
@@ -205,11 +309,7 @@ export class ErrorMapper<T, C extends string> {
 export const createErrorRule = {
 	when: <T>(predicate: (err: unknown) => err is T) =>
 		new ErrorRuleBuilder(predicate),
-
-	instance: <T extends new (...args: unknown[]) => unknown>(ErrorClass: T) =>
-		new ErrorRuleBuilder(
-			(err): err is InstanceType<T> => err instanceof ErrorClass,
-		),
+	instance: instanceRule,
 } as const
 
 // Built-in error rule presets

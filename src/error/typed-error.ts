@@ -13,9 +13,10 @@ export abstract class TypedError<
 > extends Error {
 	abstract readonly code: Code
 	readonly cause?: unknown
+	readonly title?: string
 	readonly meta: Meta
 	readonly status?: number
-	readonly raw: Raw
+	readonly raw?: Raw
 	readonly path?: string
 	readonly timestamp: number
 	readonly retryable: boolean
@@ -23,11 +24,12 @@ export abstract class TypedError<
 	constructor(
 		message: string,
 		opts: {
+			title?: string
 			cause?: unknown
 			meta?: Meta
 			status?: number
 			retryable?: boolean
-			raw: Raw
+			raw?: Raw
 			path?: string
 		},
 	) {
@@ -36,6 +38,7 @@ export abstract class TypedError<
 		this.retryable = opts.retryable ?? true
 		this.name = this.constructor.name
 		this.cause = opts.cause
+		this.title = opts.title
 		this.meta = (opts.meta ?? ({} as unknown as Meta)) as Meta
 		this.status = opts.status
 		this.raw = opts.raw
@@ -88,6 +91,7 @@ export abstract class TypedError<
 		return {
 			name: this.name,
 			code: this.code,
+			title: this.title,
 			message: this.message,
 			timestamp: this.timestamp,
 			retryable: this.retryable,
@@ -114,7 +118,6 @@ export class TimeoutError extends TypedError<
 		super(`Operation timed out after ${timeout}ms`, {
 			cause,
 			retryable: true,
-			raw: cause,
 		})
 	}
 }
@@ -130,7 +133,6 @@ export class AbortedError extends TypedError<
 		super(reason || 'Operation was aborted', {
 			cause,
 			retryable: false,
-			raw: cause,
 		})
 	}
 }
@@ -146,7 +148,6 @@ export class CircuitOpenError extends TypedError<
 		super(`Circuit breaker is open, reset after ${resetAfter}ms`, {
 			cause,
 			retryable: false,
-			raw: cause,
 		})
 	}
 }
@@ -169,7 +170,6 @@ export class ValidationError extends TypedError<
 			cause,
 			meta: { validationErrors },
 			retryable: false,
-			raw: cause,
 		})
 	}
 }
@@ -190,7 +190,6 @@ export class NetworkError extends TypedError<
 			cause,
 			status: statusCode,
 			retryable: true,
-			raw: cause,
 		})
 	}
 }
@@ -212,7 +211,7 @@ export class HttpError extends TypedError<'HTTP', HttpMeta, unknown> {
 			status,
 			meta: { response },
 			retryable: isRetryable,
-			raw: cause,
+			raw: response,
 		})
 	}
 }
@@ -225,7 +224,7 @@ export class UnknownError extends TypedError<
 	readonly code = 'UNKNOWN' as const
 
 	constructor(message: string, cause?: unknown) {
-		super(message, { cause, raw: cause })
+		super(message, { cause })
 	}
 }
 
