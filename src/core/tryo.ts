@@ -605,6 +605,10 @@ async function executeInternal<T, E extends AnyTypedError>(
 						throw mapped
 					}
 
+					if (mapped.retryable === false) {
+						throw mapped
+					}
+
 					if (attempt <= Number(maxRetries)) {
 						const shouldRetry = retry?.shouldRetry
 						const ctx = {

@@ -36,8 +36,11 @@ const hasStringCode = (err: unknown): err is CodeCarrier => {
 const isNetworkish = (err: unknown): err is Error | CodeCarrier => {
 	if (err instanceof Error) {
 		// Common fetch/network errors in browsers/Bun/Node.
-		if (err.name === 'TypeError') return true
 		const msg = err.message.toLowerCase()
+		if (err.name === 'TypeError') {
+			if (msg.includes('fetch') && msg.includes('failed')) return true
+			if (msg.includes('network')) return true
+		}
 		if (msg.includes('fetch') && msg.includes('failed')) return true
 		if (msg.includes('network')) return true
 	}
@@ -151,14 +154,15 @@ export class ErrorMapper<T, C extends string> {
 			> {
 				readonly code = errorCode
 				constructor() {
+					const raw = Object.hasOwn(mapped, 'raw')
+						? mapped.raw
+						: (err as unknown)
 					super(mapped.message, {
 						cause: mapped.cause,
 						meta: (mapped.meta ?? {}) as M,
 						status: mapped.status,
 						retryable: mapped.retryable,
-						raw: (mapped.raw === ('__NOT_SET__' as any)
-							? err
-							: mapped.raw) as any,
+						raw: raw as R extends '__NOT_SET__' ? T : R,
 						path: mapped.path,
 					})
 				}
@@ -191,8 +195,8 @@ export const BuiltinRules = {
 	// Abort errors
 	abort: createErrorRule
 		.when(
-			(err): err is DOMException =>
-				err instanceof DOMException && err.name === 'AbortError',
+			(err): err is DOMException | Error =>
+				err instanceof Error && err.name === 'AbortError',
 		)
 		.toCode('ABORTED')
 		.with((err) => ({
