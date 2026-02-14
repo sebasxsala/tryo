@@ -60,11 +60,14 @@ type RunOptions<E extends AnyTypedError, TData = unknown> = Omit<
 	onSuccess?: (data: TData, metrics?: TryoMetrics<E>) => void
 }
 
-type AllOptions<E extends AnyTypedError, TData = unknown> = Omit<
-	Partial<TryoConfig<E> & { concurrency?: number }>,
-	'circuitBreaker' | 'onSuccess'
-> & {
-	onSuccess?: (data: TData, metrics?: TryoMetrics<E>) => void
+type AllOptions<E extends AnyTypedError, TData = unknown> = RunOptions<E, TData>
+
+type PartitionedResults<T, E extends AnyTypedError> = {
+	ok: Array<SuccessResult<T, E>>
+	errors: Array<FailureResult<E> | AbortedResult<E> | TimeoutResult<E>>
+	failure: Array<FailureResult<E>>
+	aborted: Array<AbortedResult<E>>
+	timeout: Array<TimeoutResult<E>>
 }
 
 type MaybePromise<T> = T | Promise<T>
@@ -369,13 +372,7 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 		})
 	}
 
-	partitionAll<T>(results: Array<TryoResult<T, E>>): {
-		ok: Array<SuccessResult<T, E>>
-		errors: Array<FailureResult<E> | AbortedResult<E> | TimeoutResult<E>>
-		failure: Array<FailureResult<E>>
-		aborted: Array<AbortedResult<E>>
-		timeout: Array<TimeoutResult<E>>
-	} {
+	partitionAll<T>(results: Array<TryoResult<T, E>>): PartitionedResults<T, E> {
 		const ok: Array<SuccessResult<T, E>> = []
 		const errors: Array<
 			FailureResult<E> | AbortedResult<E> | TimeoutResult<E>
@@ -539,7 +536,6 @@ async function executeInternal<T, E extends AnyTypedError>(
 
 	let lastError: E | undefined
 	let totalAttempts = 0 as RetryCount
-	let totalRetries = 0 as RetryCount
 	const retryHistory: Array<{
 		attempt: RetryCount
 		error: E
@@ -575,13 +571,7 @@ async function executeInternal<T, E extends AnyTypedError>(
 				ok: false,
 				data: null,
 				error: mapped,
-				metrics: {
-					totalAttempts,
-					totalRetries,
-					totalDuration: (Date.now() - startTime) as Milliseconds,
-					lastError: mapped,
-					retryHistory,
-				},
+				metrics: buildMetrics(mapped),
 			}
 		}
 
@@ -675,7 +665,6 @@ async function executeInternal<T, E extends AnyTypedError>(
 		try {
 			const data = await runAttempt()
 			const metrics: TryoMetrics<E> = buildMetrics()
-			totalRetries = metrics.totalRetries
 			safeCall(onFinally, metrics)
 			return { type: 'success', ok: true, data, error: null, metrics }
 		} catch (err) {
@@ -689,7 +678,6 @@ async function executeInternal<T, E extends AnyTypedError>(
 						: 'failure'
 
 			const metrics: TryoMetrics<E> = buildMetrics(finalError)
-			totalRetries = metrics.totalRetries
 
 			safeCall(onFinally, metrics)
 			return {
@@ -789,13 +777,9 @@ export type Tryo<E extends AnyTypedError = AnyTypedError> = {
 		tasks: Array<(ctx: { signal: AbortSignal }) => MaybePromise<T>>,
 		options?: AllOptions<E, T>,
 	) => Promise<T[]>
-	partitionAll: <T>(results: Array<TryoResult<T, E>>) => {
-		ok: Array<SuccessResult<T, E>>
-		errors: Array<FailureResult<E> | AbortedResult<E> | TimeoutResult<E>>
-		failure: Array<FailureResult<E>>
-		aborted: Array<AbortedResult<E>>
-		timeout: Array<TimeoutResult<E>>
-	}
+	partitionAll: <T>(
+		results: Array<TryoResult<T, E>>,
+	) => PartitionedResults<T, E>
 	withConfig: (
 		additionalConfig: Omit<Partial<TryoConfig<E>>, 'signal'>,
 	) => Tryo<E>

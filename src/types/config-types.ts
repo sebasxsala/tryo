@@ -10,6 +10,7 @@ import type {
 import type { ErrorNormalizer } from '../error/error-normalizer'
 import type { AnyTypedError } from '../error/typed-error'
 import type { RetryStrategy } from '../retry/retry-strategies'
+import type { TryoMetrics } from './result-types'
 
 // Main execution configuration
 export interface TryoConfig<E extends AnyTypedError = AnyTypedError> {
@@ -123,10 +124,6 @@ export interface LoggerConfig<E extends AnyTypedError> {
 	/** Warning logging function */
 	readonly warn?: (message: string, meta?: unknown) => void
 }
-
-// Execution metrics (re-export from result-types for convenience)
-export type TryoMetrics<E extends AnyTypedError> =
-	import('./result-types').TryoMetrics<E>
 
 // Default configuration builder
 export const createTryoConfig = <E extends AnyTypedError>(
