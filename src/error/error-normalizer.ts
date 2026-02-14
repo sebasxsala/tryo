@@ -3,20 +3,20 @@
  * Provides type-safe error transformation and normalization
  */
 
-import { TypedError } from './typed-error'
+import { type AnyTypedError, TypedError } from './typed-error'
 
 // Error normalizer function type
-export type ErrorNormalizer<E extends TypedError = TypedError> = (
+export type ErrorNormalizer<E extends AnyTypedError = AnyTypedError> = (
 	error: unknown,
 ) => E
 
 // Built-in error normalizer rules
-export type ErrorRule<E extends TypedError = TypedError> = (
+export type ErrorRule<E extends AnyTypedError = AnyTypedError> = (
 	error: unknown,
 ) => E | null
 
 // Create error normalizer from rules
-export const createErrorNormalizer = <E extends TypedError>(
+export const createErrorNormalizer = <E extends AnyTypedError>(
 	rules: ErrorRule<E>[],
 	fallback: ErrorNormalizer<E>,
 ): ErrorNormalizer<E> => {
@@ -32,7 +32,7 @@ export const createErrorNormalizer = <E extends TypedError>(
 }
 
 // Create default fallback normalizer
-export const createFallbackNormalizer = <E extends TypedError>(
+export const createFallbackNormalizer = <E extends AnyTypedError>(
 	ErrorClass: new (message: string, cause?: unknown) => E,
 ): ErrorNormalizer<E> => {
 	return (error: unknown): E => {

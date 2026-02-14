@@ -77,7 +77,7 @@ describe('toError (custom normalizer bypass)', () => {
 		class CustomError extends TypedError<'CUSTOM'> {
 			readonly code = 'CUSTOM' as const
 			constructor(message: string) {
-				super(message, { retryable: false })
+				super(message, { retryable: false, raw: null })
 			}
 		}
 

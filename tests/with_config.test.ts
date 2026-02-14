@@ -9,9 +9,10 @@ describe('Executor.withConfig', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'custom' => e === 'custom')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_ERROR' as const,
 						message: 'Custom error',
+						raw: e,
 					})),
 			],
 		})

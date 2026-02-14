@@ -8,7 +8,7 @@ describe('Error normalization', () => {
 		class MyTypedError extends TypedError<'MY_CODE', { foo: string }> {
 			readonly code = 'MY_CODE' as const
 			constructor() {
-				super('boom', { meta: { foo: 'bar' } })
+				super('boom', { meta: { foo: 'bar' }, raw: null })
 			}
 		}
 

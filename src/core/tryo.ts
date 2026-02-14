@@ -12,6 +12,7 @@ import {
 import { defaultRules } from '../error/error-rules'
 import {
 	type AbortedError,
+	type AnyTypedError,
 	type CircuitOpenError,
 	type HttpError,
 	type NetworkError,
@@ -52,12 +53,12 @@ export type DefaultError =
 	| ValidationError
 	| UnknownError
 
-type RunOptions<E extends TypedError> = Omit<
+type RunOptions<E extends AnyTypedError> = Omit<
 	Partial<TryoConfig<E>>,
 	'circuitBreaker'
 >
 
-type AllOptions<E extends TypedError> = Omit<
+type AllOptions<E extends AnyTypedError> = Omit<
 	Partial<TryoConfig<E> & { concurrency?: number }>,
 	'circuitBreaker'
 >
@@ -70,12 +71,12 @@ type RuleReturn<R> = R extends (err: unknown) => infer Out
 	: never
 
 export type InferErrorFromRules<
-	TRules extends readonly ErrorRule<TypedError>[],
+	TRules extends readonly ErrorRule<AnyTypedError>[],
 > = TRules extends readonly []
 	? TypedError
 	: RuleReturn<TRules[number]> | UnknownError
 
-export type TryoOptions<E extends TypedError = TypedError> = Omit<
+export type TryoOptions<E extends AnyTypedError = AnyTypedError> = Omit<
 	Partial<TryoConfig<E>>,
 	'errorHandling' | 'signal'
 > & {
@@ -86,7 +87,7 @@ export type TryoOptions<E extends TypedError = TypedError> = Omit<
 	mapError?: (error: E) => E
 }
 
-const buildNormalizer = <E extends TypedError>(
+const buildNormalizer = <E extends AnyTypedError>(
 	opts: TryoOptions<E>,
 ): ErrorNormalizer<E> => {
 	if (opts.toError) return opts.toError
@@ -129,7 +130,7 @@ const validateJitter = (jitter?: JitterConfig): void => {
 	}
 }
 
-const normalizeExecutionConfig = <E extends TypedError>(
+const normalizeExecutionConfig = <E extends AnyTypedError>(
 	config: TryoConfig<E>,
 ): TryoConfig<E> => {
 	let normalized: TryoConfig<E> = config
@@ -165,7 +166,7 @@ const normalizeExecutionConfig = <E extends TypedError>(
 	return normalized
 }
 
-export class TryoEngine<E extends TypedError = TypedError> {
+export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 	private readonly circuitBreaker?: CircuitBreaker<E>
 	private readonly config: TryoConfig<E>
 	private lastCircuitState?: 'closed' | 'open' | 'half-open'
@@ -423,28 +424,59 @@ export class TryoEngine<E extends TypedError = TypedError> {
 	}
 }
 
-export function tryo<const TRules extends readonly ErrorRule<TypedError>[]>(
+type ExtractCode<R> = R extends (...args: any[]) => infer E
+	? E extends TypedError<any, any, any> | null
+		? E extends null
+			? never
+			: E extends TypedError<infer C, any, any>
+				? string extends C
+					? never
+					: C
+				: never
+		: never
+	: never
+
+type CheckUniqueCodes<
+	T extends readonly any[],
+	Seen = never,
+> = T extends readonly [infer Head, ...infer Tail]
+	? ExtractCode<Head> extends infer C
+		? [C] extends [never]
+			? CheckUniqueCodes<Tail, Seen>
+			: [C] extends [Seen]
+				? { error: '❌ ERROR: Código duplicado detectado'; code: C }
+				: CheckUniqueCodes<Tail, Seen | C>
+		: never
+	: true
+
+export function tryo<const TRules extends readonly ErrorRule<AnyTypedError>[]>(
 	options: Omit<
 		TryoOptions<InferErrorFromRules<TRules>>,
 		'rules' | 'rulesMode'
 	> & {
-		rules: TRules
+		rules: TRules &
+			(CheckUniqueCodes<TRules> extends true
+				? unknown
+				: CheckUniqueCodes<TRules>)
 		rulesMode: 'replace'
 	},
 ): Tryo<InferErrorFromRules<TRules>>
-export function tryo<const TRules extends readonly ErrorRule<TypedError>[]>(
+export function tryo<const TRules extends readonly ErrorRule<AnyTypedError>[]>(
 	options: Omit<
 		TryoOptions<InferErrorFromRules<TRules> | DefaultError>,
 		'rules'
 	> & {
-		rules: TRules
+		rules: TRules &
+			(CheckUniqueCodes<TRules> extends true
+				? unknown
+				: CheckUniqueCodes<TRules>)
 		rulesMode?: 'extend'
 	},
 ): Tryo<InferErrorFromRules<TRules> | DefaultError>
-export function tryo<E extends TypedError = DefaultError>(
+export function tryo<E extends AnyTypedError = DefaultError>(
 	options?: TryoOptions<E>,
 ): Tryo<E>
-export function tryo<E extends TypedError = DefaultError>(
+export function tryo<E extends AnyTypedError = DefaultError>(
 	options: TryoOptions<E> = {},
 ): Tryo<E> {
 	const engine = new TryoEngine(options)
@@ -460,7 +492,7 @@ export function tryo<E extends TypedError = DefaultError>(
 	}
 }
 
-async function executeInternal<T, E extends TypedError>(
+async function executeInternal<T, E extends AnyTypedError>(
 	task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
 	config: TryoConfig<E>,
 ): Promise<TryoResult<T, E>> {
@@ -710,7 +742,7 @@ function applyJitter(delayMs: number, jitter?: JitterConfig): number {
 	}
 }
 
-export type Tryo<E extends TypedError = TypedError> = {
+export type Tryo<E extends AnyTypedError = AnyTypedError> = {
 	run: <T>(
 		task: (ctx: { signal: AbortSignal }) => MaybePromise<T>,
 		options?: RunOptions<E>,

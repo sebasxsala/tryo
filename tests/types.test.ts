@@ -8,17 +8,19 @@ describe('Type inference', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_FOO' as const,
 						message: 'Foo error',
 						meta: { fooId: 123 },
+						raw: e,
 					})),
 				errorRule
 					.when((e): e is 'bar' => e === 'bar')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_BAR' as const,
 						message: 'Bar error',
 						meta: { barData: 'test' },
+						raw: e,
 					})),
 			] as const,
 		})
@@ -64,10 +66,11 @@ describe('Type inference', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_FOO' as const,
 						message: 'Foo error',
 						meta: { fooId: 123 },
+						raw: e,
 					})),
 			] as const,
 		})
@@ -91,9 +94,10 @@ describe('Type inference', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_FOO',
 						message: 'Foo',
+						raw: e,
 					})),
 			] as const,
 			rulesMode: 'replace',
@@ -134,9 +138,10 @@ describe('Type inference', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'foo' => e === 'foo')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_FOO',
 						message: 'Foo',
+						raw: e,
 					})),
 			] as const,
 			// rulesMode: "extend" is default

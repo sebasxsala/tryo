@@ -3,18 +3,18 @@
  * Provides better type safety and more granular result categorization
  */
 
-import type { TypedError } from '../error/typed-error'
+import type { AnyTypedError } from '../error/typed-error'
 import type { Milliseconds, RetryCount } from './branded-types'
 
 // Core execution result union with precise discrimination
-export type TryoResult<T, E extends TypedError = TypedError> =
+export type TryoResult<T, E extends AnyTypedError = AnyTypedError> =
 	| SuccessResult<T, E>
 	| FailureResult<E>
 	| AbortedResult<E>
 	| TimeoutResult<E>
 
 // Success result with metadata
-export interface SuccessResult<T, E extends TypedError> {
+export interface SuccessResult<T, E extends AnyTypedError> {
 	readonly type: 'success'
 	readonly ok: true
 	readonly data: T
@@ -23,7 +23,7 @@ export interface SuccessResult<T, E extends TypedError> {
 }
 
 // General failure result for errors
-export interface FailureResult<E extends TypedError> {
+export interface FailureResult<E extends AnyTypedError> {
 	readonly type: 'failure'
 	readonly ok: false
 	readonly data: null
@@ -32,7 +32,7 @@ export interface FailureResult<E extends TypedError> {
 }
 
 // Specific aborted result
-export interface AbortedResult<E extends TypedError> {
+export interface AbortedResult<E extends AnyTypedError> {
 	readonly type: 'aborted'
 	readonly ok: false
 	readonly data: null
@@ -41,7 +41,7 @@ export interface AbortedResult<E extends TypedError> {
 }
 
 // Specific timeout result
-export interface TimeoutResult<E extends TypedError> {
+export interface TimeoutResult<E extends AnyTypedError> {
 	readonly type: 'timeout'
 	readonly ok: false
 	readonly data: null
@@ -50,7 +50,7 @@ export interface TimeoutResult<E extends TypedError> {
 }
 
 // Enhanced execution metrics with detailed retry history
-export interface TryoMetrics<E extends TypedError> {
+export interface TryoMetrics<E extends AnyTypedError> {
 	readonly totalAttempts: RetryCount
 	readonly totalRetries: RetryCount
 	readonly totalDuration: Milliseconds
@@ -64,24 +64,24 @@ export interface TryoMetrics<E extends TypedError> {
 }
 
 // Type guards for runtime discrimination
-export const isSuccess = <T, E extends TypedError>(
+export const isSuccess = <T, E extends AnyTypedError>(
 	result: TryoResult<T, E>,
 ): result is SuccessResult<T, E> => result.type === 'success'
 
-export const isFailure = <T, E extends TypedError>(
+export const isFailure = <T, E extends AnyTypedError>(
 	result: TryoResult<T, E>,
 ): result is FailureResult<E> => result.type === 'failure'
 
-export const isAborted = <T, E extends TypedError>(
+export const isAborted = <T, E extends AnyTypedError>(
 	result: TryoResult<T, E>,
 ): result is AbortedResult<E> => result.type === 'aborted'
 
-export const isTimeout = <T, E extends TypedError>(
+export const isTimeout = <T, E extends AnyTypedError>(
 	result: TryoResult<T, E>,
 ): result is TimeoutResult<E> => result.type === 'timeout'
 
 // Utility functions for result transformation
-export const mapSuccess = <T, U, E extends TypedError>(
+export const mapSuccess = <T, U, E extends AnyTypedError>(
 	result: TryoResult<T, E>,
 	mapper: (data: T) => U,
 ): TryoResult<U, E> => {
@@ -94,7 +94,7 @@ export const mapSuccess = <T, U, E extends TypedError>(
 	return result
 }
 
-export const mapError = <T, E extends TypedError>(
+export const mapError = <T, E extends AnyTypedError>(
 	result: TryoResult<T, E>,
 	mapper: (error: E) => E,
 ): TryoResult<T, E> => {

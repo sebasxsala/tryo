@@ -4,7 +4,7 @@
  */
 
 import type { ErrorRule } from './error-normalizer'
-import { TypedError } from './typed-error'
+import { type AnyTypedError, TypedError } from './typed-error'
 
 type StatusCarrier = {
 	status?: number
@@ -70,25 +70,45 @@ export class ErrorRuleBuilder<T> {
 		const Out extends {
 			code: string
 			message: string
-			meta?: unknown
+			meta?: Record<string, unknown>
 			status?: number
 			cause?: unknown
 			retryable?: boolean
+			raw?: any
+			path?: string
 		},
-	>(mapper: (err: T) => Out): ErrorRule<TypedError<Out['code'], Out['meta']>> {
+	>(
+		mapper: (err: T) => Out,
+	): ErrorRule<
+		TypedError<
+			Out['code'],
+			Out['meta'] extends Record<string, unknown>
+				? Out['meta']
+				: Record<string, unknown>,
+			unknown extends Out['raw'] ? T : Out['raw']
+		>
+	> {
 		return (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const out = mapper(err as T)
 			const code = out.code as Out['code']
 
-			class CustomError extends TypedError<Out['code'], Out['meta']> {
+			class CustomError extends TypedError<
+				Out['code'],
+				Out['meta'] extends Record<string, unknown>
+					? Out['meta']
+					: Record<string, unknown>,
+				unknown extends Out['raw'] ? T : Out['raw']
+			> {
 				readonly code = code
 				constructor() {
 					super(out.message, {
 						cause: out.cause ?? err,
-						meta: out.meta,
+						meta: (out.meta ?? {}) as any,
 						status: out.status,
 						retryable: out.retryable,
+						raw: (out.raw ?? err) as any,
+						path: out.path,
 					})
 				}
 			}
@@ -105,28 +125,41 @@ export class ErrorMapper<T, C extends string> {
 		private readonly errorCode: C,
 	) {}
 
-	with<const M = unknown>(
+	with<
+		const M extends Record<string, unknown> = Record<string, unknown>,
+		const R = '__NOT_SET__',
+	>(
 		mapper: (err: T) => {
 			message: string
 			cause?: unknown
 			meta?: M
 			status?: number
 			retryable?: boolean
+			raw?: R
+			path?: string
 		},
-	) {
-		return (err: unknown): TypedError<C, M> | null => {
+	): ErrorRule<TypedError<C, M, R extends '__NOT_SET__' ? T : R>> {
+		return (err: unknown) => {
 			if (!this.predicate(err)) return null
-			const mapped = mapper(err)
+			const mapped = mapper(err as T)
 
 			const errorCode = this.errorCode
-			class CustomTypedError extends TypedError<C, M> {
+			class CustomTypedError extends TypedError<
+				C,
+				M,
+				R extends '__NOT_SET__' ? T : R
+			> {
 				readonly code = errorCode
 				constructor() {
 					super(mapped.message, {
 						cause: mapped.cause,
-						meta: mapped.meta,
+						meta: (mapped.meta ?? {}) as M,
 						status: mapped.status,
 						retryable: mapped.retryable,
+						raw: (mapped.raw === ('__NOT_SET__' as any)
+							? err
+							: mapped.raw) as any,
+						path: mapped.path,
 					})
 				}
 			}
@@ -150,8 +183,10 @@ export const createErrorRule = {
 // Built-in error rule presets
 export const BuiltinRules = {
 	// Preserve TypedError instances as-is
-	typed: ((err: unknown): TypedError | null =>
-		err instanceof TypedError ? err : null) as ErrorRule<TypedError>,
+	typed: ((err: unknown): AnyTypedError | null =>
+		err instanceof TypedError
+			? (err as AnyTypedError)
+			: null) as ErrorRule<AnyTypedError>,
 
 	// Abort errors
 	abort: createErrorRule
@@ -164,6 +199,7 @@ export const BuiltinRules = {
 			message: err.message || 'Operation was aborted',
 			cause: err,
 			retryable: false,
+			raw: err,
 		})),
 
 	// Timeout errors
@@ -176,6 +212,7 @@ export const BuiltinRules = {
 		.with((err) => ({
 			message: err.message || 'Operation timed out',
 			cause: err,
+			raw: err,
 		})),
 
 	// Network errors
@@ -190,6 +227,7 @@ export const BuiltinRules = {
 			return {
 				message,
 				cause: err,
+				raw: err,
 			}
 		}),
 
@@ -213,6 +251,7 @@ export const BuiltinRules = {
 				cause: err,
 				status: typeof status === 'number' ? status : undefined,
 				retryable: isRetryable,
+				raw: err,
 			}
 		}),
 
@@ -226,5 +265,6 @@ export const BuiltinRules = {
 		.with((err) => ({
 			message: err.message || 'Unknown error occurred',
 			cause: err,
+			raw: err,
 		})),
 } as const

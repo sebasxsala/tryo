@@ -3,7 +3,7 @@
  * Provides circuit breaker pattern with type safety and observability
  */
 
-import { CircuitOpenError, type TypedError } from '../error/typed-error'
+import { type AnyTypedError, CircuitOpenError } from '../error/typed-error'
 import {
 	asMilliseconds,
 	asRetryCount,
@@ -12,7 +12,7 @@ import {
 } from '../types/branded-types'
 
 // Circuit breaker configuration
-export interface CircuitBreakerConfig<E extends TypedError = TypedError> {
+export interface CircuitBreakerConfig<E extends AnyTypedError = AnyTypedError> {
 	/** Number of consecutive failures before opening circuit */
 	readonly failureThreshold: number
 
@@ -39,7 +39,7 @@ interface CircuitBreakerInternalState {
 }
 
 // Modern circuit breaker implementation
-export class CircuitBreaker<E extends TypedError = TypedError> {
+export class CircuitBreaker<E extends AnyTypedError = AnyTypedError> {
 	private state: CircuitBreakerInternalState
 	private readonly config: {
 		failureThreshold: RetryCount

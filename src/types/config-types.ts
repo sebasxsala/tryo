@@ -8,11 +8,11 @@ import type {
 	CircuitState,
 } from '../circuit-breaker/breaker'
 import type { ErrorNormalizer } from '../error/error-normalizer'
-import type { TypedError } from '../error/typed-error'
+import type { AnyTypedError } from '../error/typed-error'
 import type { RetryStrategy } from '../retry/retry-strategies'
 
 // Main execution configuration
-export interface TryoConfig<E extends TypedError = TypedError> {
+export interface TryoConfig<E extends AnyTypedError = AnyTypedError> {
 	/** Abort signal passed to tasks */
 	readonly signal?: AbortSignal
 
@@ -42,7 +42,7 @@ export interface TryoConfig<E extends TypedError = TypedError> {
 }
 
 // Retry configuration
-export interface RetryConfig<E extends TypedError> {
+export interface RetryConfig<E extends AnyTypedError> {
 	/** Maximum number of retry attempts */
 	readonly maxRetries: number
 
@@ -64,7 +64,7 @@ export type JitterConfig =
 	| { type: 'custom'; calculate: (delay: number) => number }
 
 // Type for retry predicate function
-export type ShouldRetryPredicate<E extends TypedError> = (
+export type ShouldRetryPredicate<E extends AnyTypedError> = (
 	attempt: number,
 	error: E,
 	context: RetryContext,
@@ -86,7 +86,7 @@ export interface RetryContext {
 }
 
 // Error handling configuration
-export interface ErrorHandlingConfig<E extends TypedError> {
+export interface ErrorHandlingConfig<E extends AnyTypedError> {
 	/** Error normalizer function */
 	readonly normalizer: ErrorNormalizer<E>
 
@@ -95,7 +95,7 @@ export interface ErrorHandlingConfig<E extends TypedError> {
 }
 
 // Logger configuration
-export interface LoggerConfig<E extends TypedError> {
+export interface LoggerConfig<E extends AnyTypedError> {
 	/** Debug logging function */
 	readonly debug?: (message: string, meta?: unknown) => void
 
@@ -110,7 +110,7 @@ export interface LoggerConfig<E extends TypedError> {
 }
 
 // Hook configuration for lifecycle events
-export interface HookConfig<E extends TypedError> {
+export interface HookConfig<E extends AnyTypedError> {
 	/** Called on successful execution */
 	readonly onSuccess?: <T>(data: T, metrics?: TryoMetrics<E>) => void
 
@@ -131,11 +131,11 @@ export interface HookConfig<E extends TypedError> {
 }
 
 // Execution metrics (re-export from result-types for convenience)
-export type TryoMetrics<E extends TypedError> =
+export type TryoMetrics<E extends AnyTypedError> =
 	import('./result-types').TryoMetrics<E>
 
 // Default configuration builder
-export const createTryoConfig = <E extends TypedError>(
+export const createTryoConfig = <E extends AnyTypedError>(
 	config: Partial<TryoConfig<E>> = {},
 ): TryoConfig<E> => ({
 	errorHandling: {

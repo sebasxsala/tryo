@@ -8,31 +8,38 @@ import type { Milliseconds } from '../types/branded-types'
 // Base typed error class with enhanced capabilities
 export abstract class TypedError<
 	Code extends string = string,
-	Meta = unknown,
+	Meta extends Record<string, unknown> = Record<string, unknown>,
+	Raw = unknown,
 > extends Error {
 	abstract readonly code: Code
 	readonly cause?: unknown
-	readonly meta?: Meta
+	readonly meta: Meta
 	readonly status?: number
+	readonly raw: Raw
+	readonly path?: string
 	readonly timestamp: number
 	readonly retryable: boolean
 
 	constructor(
 		message: string,
-		opts?: {
+		opts: {
 			cause?: unknown
 			meta?: Meta
 			status?: number
 			retryable?: boolean
+			raw: Raw
+			path?: string
 		},
 	) {
 		super(message)
 		this.timestamp = Date.now()
-		this.retryable = opts?.retryable ?? true
+		this.retryable = opts.retryable ?? true
 		this.name = this.constructor.name
-		;(this as { cause?: unknown }).cause = opts?.cause
-		;(this as { meta?: Meta }).meta = opts?.meta
-		;(this as { status?: number }).status = opts?.status
+		this.cause = opts.cause
+		this.meta = (opts.meta ?? ({} as unknown as Meta)) as Meta
+		this.status = opts.status
+		this.raw = opts.raw
+		this.path = opts.path
 
 		if (Error.captureStackTrace) {
 			Error.captureStackTrace(this, this.constructor)
@@ -59,6 +66,17 @@ export abstract class TypedError<
 		return Object.assign(this, { cause })
 	}
 
+	// Chainable path attachment
+	withPath(path: string): this {
+		;(this as { path?: string }).path = path
+		return this
+	}
+
+	// Chainable raw attachment
+	withRaw<const R>(raw: R): this & { raw: R } {
+		return Object.assign(this, { raw })
+	}
+
 	// Chainable retryable flag
 	withRetryable(retryable: boolean): this {
 		;(this as { retryable: boolean }).retryable = retryable
@@ -74,45 +92,72 @@ export abstract class TypedError<
 			timestamp: this.timestamp,
 			retryable: this.retryable,
 			cause: this.cause,
+			raw: this.raw,
+			path: this.path,
 			stack: this.stack,
 		}
 	}
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: top-type for covariant ErrorRule/ErrorNormalizer usage
+export type AnyTypedError = TypedError<string, any, unknown>
+
 // Built-in error types with enhanced capabilities
-export class TimeoutError extends TypedError<'TIMEOUT'> {
+export class TimeoutError extends TypedError<
+	'TIMEOUT',
+	Record<string, unknown>,
+	unknown
+> {
 	readonly code = 'TIMEOUT' as const
 
 	constructor(timeout: Milliseconds, cause?: unknown) {
 		super(`Operation timed out after ${timeout}ms`, {
 			cause,
 			retryable: true,
+			raw: cause,
 		})
 	}
 }
 
-export class AbortedError extends TypedError<'ABORTED'> {
+export class AbortedError extends TypedError<
+	'ABORTED',
+	Record<string, unknown>,
+	unknown
+> {
 	readonly code = 'ABORTED' as const
 
 	constructor(reason?: string, cause?: unknown) {
-		super(reason || 'Operation was aborted', { cause, retryable: false })
+		super(reason || 'Operation was aborted', {
+			cause,
+			retryable: false,
+			raw: cause,
+		})
 	}
 }
 
-export class CircuitOpenError extends TypedError<'CIRCUIT_OPEN'> {
+export class CircuitOpenError extends TypedError<
+	'CIRCUIT_OPEN',
+	Record<string, unknown>,
+	unknown
+> {
 	readonly code = 'CIRCUIT_OPEN' as const
 
 	constructor(resetAfter: Milliseconds, cause?: unknown) {
 		super(`Circuit breaker is open, reset after ${resetAfter}ms`, {
 			cause,
 			retryable: false,
+			raw: cause,
 		})
 	}
 }
 
-type ValidationMeta = { validationErrors: unknown[] }
+type ValidationMeta = Record<string, unknown> & { validationErrors: unknown[] }
 
-export class ValidationError extends TypedError<'VALIDATION', ValidationMeta> {
+export class ValidationError extends TypedError<
+	'VALIDATION',
+	ValidationMeta,
+	unknown
+> {
 	readonly code = 'VALIDATION' as const
 
 	constructor(
@@ -120,11 +165,20 @@ export class ValidationError extends TypedError<'VALIDATION', ValidationMeta> {
 		public readonly validationErrors: unknown[],
 		cause?: unknown,
 	) {
-		super(message, { cause, meta: { validationErrors }, retryable: false })
+		super(message, {
+			cause,
+			meta: { validationErrors },
+			retryable: false,
+			raw: cause,
+		})
 	}
 }
 
-export class NetworkError extends TypedError<'NETWORK'> {
+export class NetworkError extends TypedError<
+	'NETWORK',
+	Record<string, unknown>,
+	unknown
+> {
 	readonly code = 'NETWORK' as const
 
 	constructor(
@@ -132,13 +186,18 @@ export class NetworkError extends TypedError<'NETWORK'> {
 		public readonly statusCode?: number,
 		cause?: unknown,
 	) {
-		super(message, { cause, status: statusCode, retryable: true })
+		super(message, {
+			cause,
+			status: statusCode,
+			retryable: true,
+			raw: cause,
+		})
 	}
 }
 
-type HttpMeta = { response?: unknown }
+type HttpMeta = Record<string, unknown> & { response?: unknown }
 
-export class HttpError extends TypedError<'HTTP', HttpMeta> {
+export class HttpError extends TypedError<'HTTP', HttpMeta, unknown> {
 	readonly code = 'HTTP' as const
 
 	constructor(
@@ -153,15 +212,20 @@ export class HttpError extends TypedError<'HTTP', HttpMeta> {
 			status,
 			meta: { response },
 			retryable: isRetryable,
+			raw: cause,
 		})
 	}
 }
 
-export class UnknownError extends TypedError<'UNKNOWN'> {
+export class UnknownError extends TypedError<
+	'UNKNOWN',
+	Record<string, unknown>,
+	unknown
+> {
 	readonly code = 'UNKNOWN' as const
 
 	constructor(message: string, cause?: unknown) {
-		super(message, { cause })
+		super(message, { cause, raw: cause })
 	}
 }
 

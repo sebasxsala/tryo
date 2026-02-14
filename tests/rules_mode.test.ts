@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test'
-import type { TryoOptions } from '../src/core/tryo'
 import { tryo } from '../src/core/tryo'
 import { errorRule } from '../src/error/error-rules'
 import { sleep } from '../src/utils/timing'
@@ -10,13 +9,14 @@ describe('rulesMode default behavior', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'custom' => e === 'custom')
-					.toError(() => ({
+					.toError((_e) => ({
 						code: 'CUSTOM_ERROR' as const,
 						message: 'Custom error',
+						meta: { foo: 'bar' },
 					})),
 			],
 			// rulesMode is undefined, should default to "extend"
-		} as TryoOptions)
+		})
 
 		// 1. Check custom rule
 		const resultCustom = await ex.run(async () => {
@@ -25,6 +25,10 @@ describe('rulesMode default behavior', () => {
 		expect(resultCustom.ok).toBe(false)
 		if (!resultCustom.ok) {
 			expect(resultCustom.error.code).toBe('CUSTOM_ERROR')
+			if (resultCustom.error.code === 'CUSTOM_ERROR') {
+				expect(resultCustom.error.meta.foo).toBe('bar')
+				expect(resultCustom.error.raw).toBe('custom')
+			}
 		}
 
 		// 2. Check default rule (e.g. Timeout)
@@ -50,13 +54,14 @@ describe('rulesMode default behavior', () => {
 			rules: [
 				errorRule
 					.when((e): e is 'custom' => e === 'custom')
-					.toError(() => ({
+					.toError((e) => ({
 						code: 'CUSTOM_ERROR' as const,
 						message: 'Custom error',
+						raw: e,
 					})),
 			],
 			rulesMode: 'replace',
-		} as TryoOptions)
+		})
 
 		// 1. Check custom rule
 		const resultCustom = await ex.run(async () => {
