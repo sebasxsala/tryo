@@ -50,8 +50,7 @@
 		"lint": "biome lint",
 		"lint:fix": "biome lint --fix",
 		"check": "biome check",
-		"check:fix": "biome check --write",
-		"prepare": "husky"
+		"check:fix": "biome check --write"
 	},
 	"sideEffects": false,
 	"type": "module",
