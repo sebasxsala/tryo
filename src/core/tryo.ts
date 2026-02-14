@@ -64,17 +64,17 @@ type AllOptions<E extends AnyTypedError> = Omit<
 >
 
 type MaybePromise<T> = T | Promise<T>
+type RuleLike = (error: unknown) => AnyTypedError | null
 
 type NonNull<T> = T extends null ? never : T
 type RuleReturn<R> = R extends (err: unknown) => infer Out
 	? NonNull<Out>
 	: never
 
-export type InferErrorFromRules<
-	TRules extends readonly ErrorRule<AnyTypedError>[],
-> = TRules extends readonly []
-	? TypedError
-	: RuleReturn<TRules[number]> | UnknownError
+export type InferErrorFromRules<TRules extends readonly RuleLike[]> =
+	TRules extends readonly []
+		? TypedError
+		: RuleReturn<TRules[number]> | UnknownError
 
 export type TryoOptions<E extends AnyTypedError = AnyTypedError> = Omit<
 	Partial<TryoConfig<E>>,
@@ -424,20 +424,18 @@ export class TryoEngine<E extends AnyTypedError = AnyTypedError> {
 	}
 }
 
-type ExtractCode<R> = R extends (...args: any[]) => infer E
-	? E extends TypedError<any, any, any> | null
-		? E extends null
+type ExtractCode<R> = R extends (...args: unknown[]) => unknown
+	? Exclude<ReturnType<R>, null> extends {
+			readonly code: infer C extends string
+		}
+		? string extends C
 			? never
-			: E extends TypedError<infer C, any, any>
-				? string extends C
-					? never
-					: C
-				: never
+			: C
 		: never
 	: never
 
 type CheckUniqueCodes<
-	T extends readonly any[],
+	T extends readonly unknown[],
 	Seen = never,
 > = T extends readonly [infer Head, ...infer Tail]
 	? ExtractCode<Head> extends infer C
@@ -449,30 +447,32 @@ type CheckUniqueCodes<
 		: never
 	: true
 
-export function tryo<const TRules extends readonly ErrorRule<AnyTypedError>[]>(
+type UniqueRulesConstraint<TRules extends readonly RuleLike[]> =
+	CheckUniqueCodes<TRules> extends true
+		? unknown
+		: { __duplicate_error_codes__: CheckUniqueCodes<TRules> }
+
+type EnsureRuleTuple<TRules extends readonly unknown[]> =
+	TRules extends readonly RuleLike[] ? TRules : never
+
+export function tryo<const TRules extends readonly unknown[]>(
 	options: Omit<
-		TryoOptions<InferErrorFromRules<TRules>>,
+		TryoOptions<InferErrorFromRules<EnsureRuleTuple<TRules>>>,
 		'rules' | 'rulesMode'
 	> & {
-		rules: TRules &
-			(CheckUniqueCodes<TRules> extends true
-				? unknown
-				: CheckUniqueCodes<TRules>)
+		rules: TRules
 		rulesMode: 'replace'
-	},
-): Tryo<InferErrorFromRules<TRules>>
-export function tryo<const TRules extends readonly ErrorRule<AnyTypedError>[]>(
+	} & UniqueRulesConstraint<EnsureRuleTuple<TRules>>,
+): Tryo<InferErrorFromRules<EnsureRuleTuple<TRules>>>
+export function tryo<const TRules extends readonly unknown[]>(
 	options: Omit<
-		TryoOptions<InferErrorFromRules<TRules> | DefaultError>,
+		TryoOptions<InferErrorFromRules<EnsureRuleTuple<TRules>> | DefaultError>,
 		'rules'
 	> & {
-		rules: TRules &
-			(CheckUniqueCodes<TRules> extends true
-				? unknown
-				: CheckUniqueCodes<TRules>)
+		rules: TRules
 		rulesMode?: 'extend'
-	},
-): Tryo<InferErrorFromRules<TRules> | DefaultError>
+	} & UniqueRulesConstraint<EnsureRuleTuple<TRules>>,
+): Tryo<InferErrorFromRules<EnsureRuleTuple<TRules>> | DefaultError>
 export function tryo<E extends AnyTypedError = DefaultError>(
 	options?: TryoOptions<E>,
 ): Tryo<E>
