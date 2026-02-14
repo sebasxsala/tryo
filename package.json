@@ -1,12 +1,21 @@
 {
 	"name": "tryo",
 	"version": "0.13.1",
-	"description": "Run sync/async functions and return a typed Result instead of throwing.",
-	"type": "module",
-	"sideEffects": false,
+	"author": {
+		"name": "sebasxsala",
+		"url": "https://github.com/sebasxsala"
+	},
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"devDependencies": {
+		"@biomejs/biome": "2.3.13",
+		"@types/bun": "latest",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.7",
+		"mint": "latest",
+		"tsup": "^8.5.1",
+		"typescript": "^5.0.0"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -14,11 +23,20 @@
 			"require": "./dist/index.cjs"
 		}
 	},
+	"bugs": "https://github.com/sebasxsala/tryo/issues",
+	"description": "Run sync/async functions and return a typed Result instead of throwing.",
 	"files": [
 		"dist",
 		"README.md",
 		"LICENSE"
 	],
+	"homepage": "https://tryo-docs.pages.dev/",
+	"license": "MIT",
+	"lint-staged": {
+		"*.{ts,tsx,js,jsx,json}": [
+			"biome check --write"
+		]
+	},
 	"scripts": {
 		"build": "tsup",
 		"typecheck": "tsc --noEmit",
@@ -35,25 +53,7 @@
 		"check:fix": "biome check --write",
 		"prepare": "husky"
 	},
-	"lint-staged": {
-		"*.{ts,tsx,js,jsx,json}": [
-			"biome check --write"
-		]
-	},
-	"devDependencies": {
-		"@biomejs/biome": "2.3.13",
-		"@types/bun": "latest",
-		"husky": "^9.1.7",
-		"lint-staged": "^16.2.7",
-		"mint": "latest",
-		"tsup": "^8.5.1",
-		"typescript": "^5.0.0"
-	},
-	"license": "MIT",
-	"homepage": "https://tryo-docs.pages.dev/",
-	"bugs": "https://github.com/sebasxsala/tryo/issues",
-	"author": {
-		"name": "sebasxsala",
-		"url": "https://github.com/sebasxsala"
-	}
+	"sideEffects": false,
+	"type": "module",
+	"types": "./dist/index.d.ts"
 }
