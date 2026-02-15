@@ -282,4 +282,41 @@ describe('Type inference', () => {
 			},
 		})
 	})
+
+	it('keeps rule raw as unknown when mapper omits raw', async () => {
+		const ex = tryo({
+			rules: [
+				errorRule
+					.when((e): e is string => typeof e === 'string')
+					.toError((e) => ({
+						code: 'RAW_UNKNOWN',
+						message: `bad: ${e}`,
+					})),
+			],
+			rulesMode: 'replace',
+		})
+
+		const r = await ex.run(async () => {
+			throw 'boom'
+		})
+
+		if (!r.ok && r.error.code === 'RAW_UNKNOWN') {
+			const rawValue: unknown = r.error.raw
+			expect(rawValue).toBe('boom')
+			// @ts-expect-error omitted raw should not narrow to string
+			const rawString: string = r.error.raw
+			expect(rawString).toBe('boom')
+		}
+	})
+
+	it('narrows fluent raw metadata when using withRaw', () => {
+		class LocalError extends TypedError<'LOCAL'> {
+			readonly code = 'LOCAL' as const
+		}
+
+		const err = new LocalError('local', {})
+		const enriched = err.withRaw({ id: 123 as const })
+		const id: 123 = enriched.raw.id
+		expect(id).toBe(123)
+	})
 })

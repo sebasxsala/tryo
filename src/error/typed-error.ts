@@ -14,14 +14,14 @@ export abstract class TypedError<
 	Raw = unknown,
 > extends Error {
 	abstract readonly code: Code
-	readonly cause?: unknown
+	cause?: unknown
 	readonly title?: string
-	readonly meta: Meta
-	readonly status?: number
-	readonly raw?: Raw
-	readonly path?: string
+	meta: Meta
+	status?: number
+	raw?: Raw
+	path?: string
 	readonly timestamp: number
-	readonly retryable: boolean
+	retryable: boolean
 
 	constructor(
 		message: string,
@@ -59,33 +59,37 @@ export abstract class TypedError<
 	}
 	// Chainable metadata attachment
 	withMeta<const M extends object>(meta: M): this & { meta: M } {
-		return Object.assign(this, { meta })
+		this.meta = meta as unknown as Meta
+		return this as this & { meta: M }
 	}
 
 	// Chainable status code attachment
 	withStatus(status: number): this & { status: number } {
-		return Object.assign(this, { status })
+		this.status = status
+		return this as this & { status: number }
 	}
 
 	// Chainable cause attachment
 	withCause(cause: unknown): this & { cause: unknown } {
-		return Object.assign(this, { cause })
+		this.cause = cause
+		return this as this & { cause: unknown }
 	}
 
 	// Chainable path attachment
 	withPath(path: string): this {
-		;(this as { path?: string }).path = path
+		this.path = path
 		return this
 	}
 
 	// Chainable raw attachment
 	withRaw<const R>(raw: R): this & { raw: R } {
-		return Object.assign(this, { raw })
+		this.raw = raw as unknown as Raw
+		return this as this & { raw: R }
 	}
 
 	// Chainable retryable flag
 	withRetryable(retryable: boolean): this {
-		;(this as { retryable: boolean }).retryable = retryable
+		this.retryable = retryable
 		return this
 	}
 
@@ -96,6 +100,8 @@ export abstract class TypedError<
 			code: this.code,
 			title: this.title,
 			message: this.message,
+			meta: this.meta,
+			status: this.status,
 			timestamp: this.timestamp,
 			retryable: this.retryable,
 			cause: this.cause,
