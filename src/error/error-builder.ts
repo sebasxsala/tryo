@@ -61,12 +61,19 @@ type InferableInstanceShape = Error & {
 	readonly cause?: unknown
 }
 
-type MappedTypedError<Out extends ErrorResponse, Input> = TypedError<
+type ResolvedMeta<TMeta> =
+	TMeta extends Record<string, unknown> ? TMeta : Record<string, unknown>
+
+type ResolvedRaw<Out extends { raw?: unknown }> = Out extends {
+	raw: infer TRaw
+}
+	? TRaw
+	: unknown
+
+type MappedTypedError<Out extends ErrorResponse> = TypedError<
 	Out['code'],
-	Out['meta'] extends Record<string, unknown>
-		? Out['meta']
-		: Record<string, unknown>,
-	Out['raw'] extends undefined ? Input : Out['raw']
+	ResolvedMeta<Out['meta']>,
+	ResolvedRaw<Out>
 >
 
 const extractStaticCodeFromMapper = (mapper: (...args: never[]) => unknown) => {
@@ -131,31 +138,24 @@ export class ErrorRuleBuilder<T> {
 	// The returned rule is usable in createErrorNormalizer/tryo({ rules }).
 	toError<const Out extends ErrorResponse>(
 		mapper: (err: T) => Strict<Out, ErrorResponse>,
-	): ErrorRule<MappedTypedError<Out, T>> {
-		const rule: ErrorRule<MappedTypedError<Out, T>> = (err: unknown) => {
+	): ErrorRule<MappedTypedError<Out>> {
+		const rule: ErrorRule<MappedTypedError<Out>> = (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const out = mapper(err as T)
 			const code = out.code as Out['code']
 			const cause = Object.hasOwn(out, 'cause') ? out.cause : err
-			const meta = (out.meta ?? {}) as Out['meta'] extends Record<
-				string,
-				unknown
-			>
-				? Out['meta']
-				: Record<string, unknown>
+			const meta = (out.meta ?? {}) as ResolvedMeta<Out['meta']>
 
 			class CustomError extends TypedError<
 				Out['code'],
-				Out['meta'] extends Record<string, unknown>
-					? Out['meta']
-					: Record<string, unknown>,
-				Out['raw'] extends undefined ? T : Out['raw']
+				ResolvedMeta<Out['meta']>,
+				ResolvedRaw<Out>
 			> {
 				readonly code = code
 				constructor() {
 					const raw = (
 						Object.hasOwn(out, 'raw') ? out.raw : err
-					) as Out['raw'] extends undefined ? T : Out['raw']
+					) as ResolvedRaw<Out>
 
 					super(out.message, {
 						title: out.title,
@@ -175,7 +175,7 @@ export class ErrorRuleBuilder<T> {
 		const staticCode = extractStaticCodeFromMapper(mapper)
 		if (staticCode) {
 			;(
-				rule as ErrorRule<MappedTypedError<Out, T>> & { __tryoCode?: string }
+				rule as ErrorRule<MappedTypedError<Out>> & { __tryoCode?: string }
 			).__tryoCode = staticCode
 		}
 
@@ -196,7 +196,7 @@ function instanceRule<
 >(
 	ErrorClass: T,
 	mapper: (err: InstanceType<T>) => Strict<Out, ErrorResponse>,
-): ErrorRule<MappedTypedError<Out, InstanceType<T>>>
+): ErrorRule<MappedTypedError<Out>>
 function instanceRule(
 	ErrorClass: abstract new (...args: never[]) => unknown,
 	mapper?: (err: unknown) => Strict<ErrorResponse, ErrorResponse>,
@@ -279,46 +279,25 @@ export class ErrorMapper<T, C extends string> {
 
 	with<const Out extends MapperResponse>(
 		mapper: (err: T) => Strict<Out, ErrorResponse>,
-	): ErrorRule<
-		TypedError<
-			C,
-			Out['meta'] extends Record<string, unknown>
-				? Out['meta']
-				: Record<string, unknown>,
-			Out['raw'] extends undefined ? T : Out['raw']
-		>
-	> {
+	): ErrorRule<TypedError<C, ResolvedMeta<Out['meta']>, ResolvedRaw<Out>>> {
 		const rule: ErrorRule<
-			TypedError<
-				C,
-				Out['meta'] extends Record<string, unknown>
-					? Out['meta']
-					: Record<string, unknown>,
-				Out['raw'] extends undefined ? T : Out['raw']
-			>
+			TypedError<C, ResolvedMeta<Out['meta']>, ResolvedRaw<Out>>
 		> = (err: unknown) => {
 			if (!this.predicate(err)) return null
 			const mapped = mapper(err as T) as Out
 			const cause = Object.hasOwn(mapped, 'cause') ? mapped.cause : err
-			const meta = (mapped.meta ?? {}) as Out['meta'] extends Record<
-				string,
-				unknown
-			>
-				? Out['meta']
-				: Record<string, unknown>
+			const meta = (mapped.meta ?? {}) as ResolvedMeta<Out['meta']>
 
 			const errorCode = this.errorCode
 			class CustomTypedError extends TypedError<
 				C,
-				Out['meta'] extends Record<string, unknown>
-					? Out['meta']
-					: Record<string, unknown>,
-				Out['raw'] extends undefined ? T : Out['raw']
+				ResolvedMeta<Out['meta']>,
+				ResolvedRaw<Out>
 			> {
 				readonly code = errorCode
 				constructor() {
 					const raw = Object.hasOwn(mapped, 'raw') ? mapped.raw : err
-					const typedRaw = raw as Out['raw'] extends undefined ? T : Out['raw']
+					const typedRaw = raw as ResolvedRaw<Out>
 					super(mapped.message, {
 						title: mapped.title,
 						cause,

@@ -5,10 +5,12 @@
 
 import type { Milliseconds } from '../types/branded-types'
 
+type DefaultErrorMeta = Record<string, unknown>
+
 // Base typed error class with enhanced capabilities
 export abstract class TypedError<
 	Code extends string = string,
-	Meta extends Record<string, unknown> = Record<string, unknown>,
+	Meta extends object = DefaultErrorMeta,
 	Raw = unknown,
 > extends Error {
 	abstract readonly code: Code
@@ -50,12 +52,13 @@ export abstract class TypedError<
 	}
 
 	// Type-safe error code checking
-	is<C extends string>(code: C): this is TypedError<C> & { code: C } {
+	is<C extends string>(
+		code: C,
+	): this is TypedError<C, Meta, Raw> & { code: C } {
 		return (this.code as string) === code
 	}
-
 	// Chainable metadata attachment
-	withMeta<const M>(meta: M): this & { meta: M } {
+	withMeta<const M extends object>(meta: M): this & { meta: M } {
 		return Object.assign(this, { meta })
 	}
 
@@ -103,15 +106,10 @@ export abstract class TypedError<
 	}
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: top-type for covariant ErrorRule/ErrorNormalizer usage
-export type AnyTypedError = TypedError<string, any, unknown>
+export type AnyTypedError = TypedError
 
 // Built-in error types with enhanced capabilities
-export class TimeoutError extends TypedError<
-	'TIMEOUT',
-	Record<string, unknown>,
-	unknown
-> {
+export class TimeoutError extends TypedError<'TIMEOUT'> {
 	readonly code = 'TIMEOUT' as const
 
 	constructor(timeout: Milliseconds, cause?: unknown) {
@@ -122,11 +120,7 @@ export class TimeoutError extends TypedError<
 	}
 }
 
-export class AbortedError extends TypedError<
-	'ABORTED',
-	Record<string, unknown>,
-	unknown
-> {
+export class AbortedError extends TypedError<'ABORTED'> {
 	readonly code = 'ABORTED' as const
 
 	constructor(reason?: string, cause?: unknown) {
@@ -137,11 +131,7 @@ export class AbortedError extends TypedError<
 	}
 }
 
-export class CircuitOpenError extends TypedError<
-	'CIRCUIT_OPEN',
-	Record<string, unknown>,
-	unknown
-> {
+export class CircuitOpenError extends TypedError<'CIRCUIT_OPEN'> {
 	readonly code = 'CIRCUIT_OPEN' as const
 
 	constructor(resetAfter: Milliseconds, cause?: unknown) {
@@ -152,13 +142,9 @@ export class CircuitOpenError extends TypedError<
 	}
 }
 
-type ValidationMeta = Record<string, unknown> & { validationErrors: unknown[] }
+type ValidationMeta = { validationErrors: unknown[] }
 
-export class ValidationError extends TypedError<
-	'VALIDATION',
-	ValidationMeta,
-	unknown
-> {
+export class ValidationError extends TypedError<'VALIDATION', ValidationMeta> {
 	readonly code = 'VALIDATION' as const
 
 	constructor(
@@ -174,11 +160,7 @@ export class ValidationError extends TypedError<
 	}
 }
 
-export class NetworkError extends TypedError<
-	'NETWORK',
-	Record<string, unknown>,
-	unknown
-> {
+export class NetworkError extends TypedError<'NETWORK'> {
 	readonly code = 'NETWORK' as const
 
 	constructor(
@@ -194,9 +176,9 @@ export class NetworkError extends TypedError<
 	}
 }
 
-type HttpMeta = Record<string, unknown> & { response?: unknown }
+type HttpMeta = { response?: unknown }
 
-export class HttpError extends TypedError<'HTTP', HttpMeta, unknown> {
+export class HttpError extends TypedError<'HTTP', HttpMeta> {
 	readonly code = 'HTTP' as const
 
 	constructor(
@@ -216,11 +198,7 @@ export class HttpError extends TypedError<'HTTP', HttpMeta, unknown> {
 	}
 }
 
-export class UnknownError extends TypedError<
-	'UNKNOWN',
-	Record<string, unknown>,
-	unknown
-> {
+export class UnknownError extends TypedError<'UNKNOWN'> {
 	readonly code = 'UNKNOWN' as const
 
 	constructor(message: string, cause?: unknown) {

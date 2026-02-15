@@ -285,6 +285,30 @@ describe('Error normalization', () => {
 		}
 	})
 
+	it('respects explicit undefined raw when mapper provides raw field', async () => {
+		const ex = tryo({
+			rules: [
+				errorRule
+					.when((e): e is string => typeof e === 'string')
+					.toError((e) => ({
+						code: 'UNDEFINED_RAW',
+						message: `bad: ${e}`,
+						raw: undefined,
+					})),
+			],
+			rulesMode: 'replace',
+		})
+
+		const r = await ex.run(async () => {
+			throw 'boom'
+		})
+
+		expect(r.ok).toBe(false)
+		if (!r.ok) {
+			expect(r.error.raw).toBeUndefined()
+		}
+	})
+
 	it('keeps cause and raw undefined when original input is undefined', async () => {
 		const ex = tryo({
 			rules: [

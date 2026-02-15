@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { tryo } from '../src/core/tryo'
 import { errorRule } from '../src/error/error-rules'
+import { TypedError } from '../src/error/typed-error'
 
 describe('Type inference', () => {
 	it('infers custom error codes from rules and narrows meta type', async () => {
@@ -45,6 +46,33 @@ describe('Type inference', () => {
 					expect(val).toBe('test')
 				}
 			}
+		}
+	})
+
+	it('preserves meta and raw types after code checks with is()', () => {
+		class DomainError extends TypedError<
+			'DOMAIN',
+			{ field: string },
+			{ input: string }
+		> {
+			readonly code = 'DOMAIN' as const
+
+			constructor() {
+				super('domain', {
+					meta: { field: 'email' },
+					raw: { input: 'email' },
+				})
+			}
+		}
+
+		const err: TypedError<string, { field: string }, { input: string }> =
+			new DomainError()
+
+		if (err.is('DOMAIN')) {
+			const field: string = err.meta.field
+			const input: string = err.raw?.input ?? ''
+			expect(field).toBe('email')
+			expect(input).toBe('email')
 		}
 	})
 
